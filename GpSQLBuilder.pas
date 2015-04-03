@@ -31,10 +31,12 @@
 ///
 ///   Author            : Primoz Gabrijelcic
 ///   Creation date     : 2010-11-24
-///   Last modification : 2015-04-02
-///   Version           : 1.07
+///   Last modification : 2015-04-03
+///   Version           : 1.08
 ///</para><para>
 ///   History:
+///     1.08: 2015-04-03
+///        - &And and &Or aliases for AndE and OrE.
 ///     1.07: 2015-04-02
 ///       - IGpSQLBuilder
 ///         - Added new overloads for Select, Where, OrderBy, GroupBy, and Having.
@@ -88,10 +90,14 @@ type
   IGpSQLBuilderCase = interface ['{1E379718-0959-455A-80AA-63BDA7C92F8C}']
     function  GetAsString: string;
   //
+    function  &And(const expression: array of const): IGpSQLBuilderCase; overload;
+    function  &And(const expression: string): IGpSQLBuilderCase; overload;
     function  AndE(const expression: array of const): IGpSQLBuilderCase; overload;
     function  AndE(const expression: string): IGpSQLBuilderCase; overload;
     function  &Else(const value: string): IGpSQLBuilderCase;
     function  &End: IGpSQLBuilder;
+    function  &Or(const expression: array of const): IGpSQLBuilderCase; overload;
+    function  &Or(const expression: string): IGpSQLBuilderCase; overload;
     function  OrE(const expression: array of const): IGpSQLBuilderCase; overload;
     function  OrE(const expression: string): IGpSQLBuilderCase; overload;
     function  &Then(const value: string): IGpSQLBuilderCase;
@@ -105,6 +111,8 @@ type
     function GetSection(sqlSection: TGpSQLSection): IGpSQLBuilderSection;
   //
     function ActiveSection: IGpSQLBuilderSection;
+    function &And(const expression: array of const): IGpSQLBuilder; overload;
+    function &And(const expression: string): IGpSQLBuilder; overload;
     function AndE(const expression: array of const): IGpSQLBuilder; overload;
     function AndE(const expression: string): IGpSQLBuilder; overload;
     function AllColumns: IGpSQLBuilder;
@@ -127,6 +135,8 @@ type
     function LeftJoin(const dbName: string; const dbAlias: string = ''): IGpSQLBuilder;
     function &On(const expression: string): IGpSQLBuilder; overload;
     function &On(const expression: array of const): IGpSQLBuilder; overload;
+    function &Or(const expression: array of const): IGpSQLBuilder; overload;
+    function &Or(const expression: string): IGpSQLBuilder; overload;
     function OrderBy(const colName: string = ''): IGpSQLBuilder;
     function OrE(const expression: array of const): IGpSQLBuilder; overload;
     function OrE(const expression: string): IGpSQLBuilder; overload;
@@ -177,10 +187,14 @@ type
   public
     constructor Create(const sqlBuilder: IGpSQLBuilder; const expression: string);
     destructor  Destroy; override;
+    function  &And(const expression: array of const): IGpSQLBuilderCase; overload;
+    function  &And(const expression: string): IGpSQLBuilderCase; overload;
     function  AndE(const expression: array of const): IGpSQLBuilderCase; overload;
     function  AndE(const expression: string): IGpSQLBuilderCase; overload;
     function  &Else(const value: string): IGpSQLBuilderCase;
     function  &End: IGpSQLBuilder;
+    function  &Or(const expression: array of const): IGpSQLBuilderCase; overload;
+    function  &Or(const expression: string): IGpSQLBuilderCase; overload;
     function  OrE(const expression: array of const): IGpSQLBuilderCase; overload;
     function  OrE(const expression: string): IGpSQLBuilderCase; overload;
     function  &Then(const value: string): IGpSQLBuilderCase;
@@ -207,6 +221,8 @@ type
     constructor Create;
     constructor CreateSubquery;
     function  ActiveSection: IGpSQLBuilderSection;
+    function  &And(const expression: array of const): IGpSQLBuilder; overload;
+    function  &And(const expression: string): IGpSQLBuilder; overload;
     function  AndE(const expression: array of const): IGpSQLBuilder; overload;
     function  AndE(const expression: string): IGpSQLBuilder; overload;
     function  AllColumns: IGpSQLBuilder;
@@ -229,6 +245,8 @@ type
     function  LeftJoin(const dbName: string; const dbAlias: string = ''): IGpSQLBuilder;
     function  &On(const expression: string): IGpSQLBuilder; overload;
     function  &On(const expression: array of const): IGpSQLBuilder; overload;
+    function  &Or(const expression: array of const): IGpSQLBuilder; overload;
+    function  &Or(const expression: string): IGpSQLBuilder; overload;
     function  OrderBy(const colName: string = ''): IGpSQLBuilder;
     function  OrE(const expression: array of const): IGpSQLBuilder; overload;
     function  OrE(const expression: string): IGpSQLBuilder; overload;
@@ -368,6 +386,16 @@ begin
   inherited;
 end; { TGpSQLBuilderCase.Destroy }
 
+function TGpSQLBuilderCase.&And(const expression: array of const): IGpSQLBuilderCase;
+begin
+  Result := AndE(expression);
+end; { TGpSQLBuilder.&And }
+
+function TGpSQLBuilderCase.&And(const expression: string): IGpSQLBuilderCase;
+begin
+  Result := AndE(expression);
+end; { TGpSQLBuilder.&And }
+
 function TGpSQLBuilderCase.AndE(const expression: array of const): IGpSQLBuilderCase;
 begin
   FActiveSection.Add(['(', SqlParamsToStr(expression), ')'], stAnd);
@@ -391,6 +419,16 @@ begin
   FSQLBuilder.ActiveSection.Add(AsString, stList);
   Result := FSQLBuilder;
 end; { TGpSQLBuilderCase }
+
+function TGpSQLBuilderCase.&Or(const expression: array of const): IGpSQLBuilderCase;
+begin
+  Result := OrE(expression);
+end; {  TGpSQLBuilder.&Or}
+
+function TGpSQLBuilderCase.&Or(const expression: string): IGpSQLBuilderCase;
+begin
+  Result := OrE(expression);
+end; { TGpSQLBuilder.&Or }
 
 function TGpSQLBuilderCase.GetAsString: string;
 var
@@ -470,6 +508,16 @@ begin
   FActiveSection.Add(['(', SqlParamsToStr(expression), ')'], stAnd);
   Result := Self;
 end; { TGpSQLBuilder.AndE }
+
+function TGpSQLBuilder.&And(const expression: array of const): IGpSQLBuilder;
+begin
+  Result := AndE(expression);
+end; { TGpSQLBuilder.&And }
+
+function TGpSQLBuilder.&And(const expression: string): IGpSQLBuilder;
+begin
+  Result := AndE(expression);
+end; { TGpSQLBuilder.&And }
 
 function TGpSQLBuilder.AndE(const expression: string): IGpSQLBuilder;
 begin
@@ -649,6 +697,16 @@ begin
   else
     Result := Column(colName);
 end; { TGpSQLBuilder.OrderBy }
+
+function TGpSQLBuilder.&Or(const expression: array of const): IGpSQLBuilder;
+begin
+  Result := OrE(expression);
+end; { TGpSQLBuilder.&Or }
+
+function TGpSQLBuilder.&Or(const expression: string): IGpSQLBuilder;
+begin
+  Result := OrE(expression);
+end; { TGpSQLBuilder.&Or }
 
 function TGpSQLBuilder.OrE(const expression: string): IGpSQLBuilder;
 begin
