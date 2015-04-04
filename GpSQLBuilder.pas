@@ -32,7 +32,7 @@
 ///   Author            : Primoz Gabrijelcic
 ///   Creation date     : 2010-11-24
 ///   Last modification : 2015-04-04
-///   Version           : 1.09
+///   Version           : 2.0
 ///</para><para>
 ///   History:
 ///     2.0: 2015-04-04
