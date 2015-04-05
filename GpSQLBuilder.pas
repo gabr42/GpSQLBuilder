@@ -32,9 +32,12 @@
 ///   Author            : Primoz Gabrijelcic
 ///   Creation date     : 2010-11-24
 ///   Last modification : 2015-04-05
-///   Version           : 2.01
+///   Version           : 2.02
 ///</para><para>
 ///   History:
+///     2.02: 2015-04-05
+///        - Reimplemented old .Subquery mechanism as .Expression: IGpSQLBuilderExpression.
+///        - Added &And and &Or overloads accepting IGpSQLBuilderExpression.
 ///     2.01: 2015-04-05
 ///        - Added integer-accepting overloads for IGpSQLBuilderCase.&Then and .&Else.
 ///     2.0: 2015-04-04
@@ -83,44 +86,44 @@ unit GpSQLBuilder;
 interface
 
 type
-  TGpSQLSection = (secSelect, secFrom, secLeftJoin, secWhere, secGroupBy, secHaving, secOrderBy);
-  TGpSQLSections = set of TGpSQLSection;
-  TGpSQLStringType = (stNormal, stAnd, stOr, stList, stAppend);
+  IGpSQLBuilder = interface;
 
-  IGpSQLBuilderSection = interface ['{BE0A0FF9-AD70-40C5-A1C2-7FA2F7061153}']
+  IGpSQLBuilderExpression = interface ['{CC7ED7A2-3B39-4341-9CBB-EE1C7851BBA9}']
     function  GetAsString: string;
   //
-    procedure Add(const params: array of const; paramType: TGpSQLStringType = stNormal); overload;
-    procedure Add(const params: string; paramType: TGpSQLStringType = stNormal); overload;
-    procedure Clear;
+    function  &And(const expression: array of const): IGpSQLBuilderExpression; overload;
+    function  &And(const expression: string): IGpSQLBuilderExpression; overload;
+    function  &Or(const expression: array of const): IGpSQLBuilderExpression; overload;
+    function  &Or(const expression: string): IGpSQLBuilderExpression; overload;
     property AsString: string read GetAsString;
-  end; { IGpSQLBuilderSection }
-
-  IGpSQLBuilder = interface;
+  end; { IGpSQLBuilderExpression }
 
   IGpSQLBuilderCase = interface ['{1E379718-0959-455A-80AA-63BDA7C92F8C}']
     function  GetAsString: string;
   //
     function  &And(const expression: array of const): IGpSQLBuilderCase; overload;
     function  &And(const expression: string): IGpSQLBuilderCase; overload;
+    function  &And(const expression: IGpSQLBuilderExpression): IGpSQLBuilderCase; overload;
     function  &Else(const value: string): IGpSQLBuilderCase; overload;
     function  &Else(const value: int64): IGpSQLBuilderCase; overload;
     function  &End: IGpSQLBuilder;
     function  &Or(const expression: array of const): IGpSQLBuilderCase; overload;
     function  &Or(const expression: string): IGpSQLBuilderCase; overload;
+    function  &Or(const expression: IGpSQLBuilderExpression): IGpSQLBuilderCase; overload;
     function  &Then(const value: string): IGpSQLBuilderCase; overload;
     function  &Then(const value: int64): IGpSQLBuilderCase; overload;
     function  When(const condition: string): IGpSQLBuilderCase; overload;
     function  When(const condition: array of const): IGpSQLBuilderCase; overload;
+    function Expression: IGpSQLBuilderExpression;
     property AsString: string read GetAsString;
   end; { IGpSQLBuilderCase }
 
   IGpSQLBuilder = interface ['{43EA3E34-A8DB-4257-A19F-030F404646E7}']
     function GetAsString: string;
-    function GetSection(sqlSection: TGpSQLSection): IGpSQLBuilderSection;
   //
     function &And(const expression: array of const): IGpSQLBuilder; overload;
     function &And(const expression: string): IGpSQLBuilder; overload;
+    function &And(const expression: IGpSQLBuilderExpression): IGpSQLBuilder; overload;
     function All: IGpSQLBuilder;
     function &As(const alias: string): IGpSQLBuilder;
     function &Case(const expression: string = ''): IGpSQLBuilderCase; overload;
@@ -139,18 +142,19 @@ type
     function &On(const expression: array of const): IGpSQLBuilder; overload;
     function &Or(const expression: array of const): IGpSQLBuilder; overload;
     function &Or(const expression: string): IGpSQLBuilder; overload;
+    function &Or(const expression: IGpSQLBuilderExpression): IGpSQLBuilder; overload;
     function OrderBy(const colName: string = ''): IGpSQLBuilder;
     function Select(const colName: string = ''): IGpSQLBuilder;
     function Skip(num: integer): IGpSQLBuilder;
     function Where(const expression: string = ''): IGpSQLBuilder; overload;
     function Where(const expression: array of const): IGpSQLBuilder; overload;
   //
-    function ActiveSection: IGpSQLBuilderSection;
     function Clear: IGpSQLBuilder;
     function ClearAll: IGpSQLBuilder;
+    function Expression(const term: string = ''): IGpSQLBuilderExpression; overload;
+    function Expression(const term: array of const): IGpSQLBuilderExpression; overload;
     function IsEmpty: boolean;
     property AsString: string read GetAsString;
-    property Section[sqlSection: TGpSQLSection]: IGpSQLBuilderSection read GetSection; default;
   end; { IGpSQLBuilder }
 
 function CreateGpSQLBuilder: IGpSQLBuilder;
@@ -162,6 +166,23 @@ uses
   System.Generics.Collections;
 
 type
+  TGpSQLSection = (secSelect, secFrom, secLeftJoin, secWhere, secGroupBy, secHaving, secOrderBy);
+  TGpSQLSections = set of TGpSQLSection;
+  TGpSQLStringType = (stNormal, stAnd, stOr, stList, stAppend);
+
+  IGpSQLBuilderSection = interface ['{BE0A0FF9-AD70-40C5-A1C2-7FA2F7061153}']
+    function  GetAsString: string;
+  //
+    procedure Add(const params: array of const; paramType: TGpSQLStringType = stNormal); overload;
+    procedure Add(const params: string; paramType: TGpSQLStringType = stNormal); overload;
+    procedure Clear;
+    property AsString: string read GetAsString;
+  end; { IGpSQLBuilderSection }
+
+  IGpSQLBuilderEx = interface ['{9F70DAA3-0900-4DFD-B967-C56D23513609}']
+    function  ActiveSection: IGpSQLBuilderSection;
+  end; { IGpSQLBuilderEx }
+
   TGpSQLBuilderSection = class(TInterfacedObject, IGpSQLBuilderSection)
   strict private
     FAsString        : string;
@@ -178,6 +199,20 @@ type
     property AsString: string read GetAsString;
   end; { TGpSQLBuilderSection }
 
+  TGpSQLBuilderExpression = class(TInterfacedObject, IGpSQLBuilderExpression)
+  strict private
+    FActiveSection : IGpSQLBuilderSection;
+  strict protected
+    function  GetAsString: string;
+  public
+    constructor Create(const expression: string = '');
+    function  &And(const expression: array of const): IGpSQLBuilderExpression; overload;
+    function  &And(const expression: string): IGpSQLBuilderExpression; overload;
+    function  &Or(const expression: array of const): IGpSQLBuilderExpression; overload;
+    function  &Or(const expression: string): IGpSQLBuilderExpression; overload;
+    property AsString: string read GetAsString;
+  end; { TGpSQLBuilderExpression }
+
   TGpSQLBuilderCase = class(TInterfacedObject, IGpSQLBuilderCase)
   strict private
     FActiveSection : IGpSQLBuilderSection;
@@ -193,11 +228,14 @@ type
     destructor  Destroy; override;
     function  &And(const expression: array of const): IGpSQLBuilderCase; overload;
     function  &And(const expression: string): IGpSQLBuilderCase; overload;
+    function  &And(const expression: IGpSQLBuilderExpression): IGpSQLBuilderCase; overload;
     function  &Else(const value: string): IGpSQLBuilderCase; overload;
     function  &Else(const value: int64): IGpSQLBuilderCase; overload;
     function  &End: IGpSQLBuilder;
+    function  Expression: IGpSQLBuilderExpression;
     function  &Or(const expression: array of const): IGpSQLBuilderCase; overload;
     function  &Or(const expression: string): IGpSQLBuilderCase; overload;
+    function  &Or(const expression: IGpSQLBuilderExpression): IGpSQLBuilderCase; overload;
     function  &Then(const value: string): IGpSQLBuilderCase; overload;
     function  &Then(const value: int64): IGpSQLBuilderCase; overload;
     function  When(const condition: string): IGpSQLBuilderCase; overload;
@@ -205,7 +243,7 @@ type
     property AsString: string read GetAsString;
   end; { IGpSQLBuilderCase }
 
-  TGpSQLBuilder = class(TInterfacedObject, IGpSQLBuilder)
+  TGpSQLBuilder = class(TInterfacedObject, IGpSQLBuilder, IGpSQLBuilderEx)
   strict private
   const
     FSectionNames : array [TGpSQLSection] of string = (
@@ -224,6 +262,7 @@ type
     function  ActiveSection: IGpSQLBuilderSection;
     function  &And(const expression: array of const): IGpSQLBuilder; overload;
     function  &And(const expression: string): IGpSQLBuilder; overload;
+    function  &And(const expression: IGpSQLBuilderExpression): IGpSQLBuilder; overload;
     function  All: IGpSQLBuilder;
     function  &As(const alias: string): IGpSQLBuilder;
     function  &Case(const expression: string = ''): IGpSQLBuilderCase; overload;
@@ -234,6 +273,8 @@ type
     function  Column(const dbName, colName: string): IGpSQLBuilder; overload;
     function  Column(const colName: array of const): IGpSQLBuilder; overload;
     function  Desc: IGpSQLBuilder;
+    function  Expression(const term: string = ''): IGpSQLBuilderExpression; overload;
+    function  Expression(const term: array of const): IGpSQLBuilderExpression; overload;
     function  First(num: integer): IGpSQLBuilder;
     function  From(const dbName: string): IGpSQLBuilder;
     function  GroupBy(const colName: string = ''): IGpSQLBuilder;
@@ -245,6 +286,7 @@ type
     function  &On(const expression: array of const): IGpSQLBuilder; overload;
     function  &Or(const expression: array of const): IGpSQLBuilder; overload;
     function  &Or(const expression: string): IGpSQLBuilder; overload;
+    function  &Or(const expression: IGpSQLBuilderExpression): IGpSQLBuilder; overload;
     function  OrderBy(const colName: string = ''): IGpSQLBuilder;
     function  Select(const colName: string = ''): IGpSQLBuilder;
     function  Skip(num: integer): IGpSQLBuilder;
@@ -392,6 +434,12 @@ begin
   Result := Self;
 end; { TGpSQLBuilder.&And }
 
+function TGpSQLBuilderCase.&And(const expression: IGpSQLBuilderExpression):
+  IGpSQLBuilderCase;
+begin
+  Result := &And(expression.AsString);
+end; { TGpSQLBuilderCase }
+
 function TGpSQLBuilderCase.&Else(const value: string): IGpSQLBuilderCase;
 begin
   FElseValue := value;
@@ -406,7 +454,7 @@ end; { TGpSQLBuilderCase }
 
 function TGpSQLBuilderCase.&End: IGpSQLBuilder;
 begin
-  FSQLBuilder.ActiveSection.Add(AsString, stList);
+  (FSQLBuilder as IGpSQLBuilderEx).ActiveSection.Add(AsString, stList);
   Result := FSQLBuilder;
 end; { TGpSQLBuilderCase }
 
@@ -435,6 +483,12 @@ begin
   Result := Self;
 end; { TGpSQLBuilder.&Or }
 
+function TGpSQLBuilderCase.&Or(const expression: IGpSQLBuilderExpression):
+  IGpSQLBuilderCase;
+begin
+  Result := &Or(expression.AsString);
+end; { TGpSQLBuilderCase }
+
 function TGpSQLBuilderCase.&Then(const value: string): IGpSQLBuilderCase;
 begin
   FWhenList[FWhenList.Count - 1] :=
@@ -448,6 +502,11 @@ function TGpSQLBuilderCase.&Then(const value: int64): IGpSQLBuilderCase;
 begin
   Result := &Then(IntToStr(value));
 end; { TGpSQLBuilderCase }
+
+function TGpSQLBuilderCase.Expression: IGpSQLBuilderExpression;
+begin
+  Result := TGpSQLBuilderExpression.Create;
+end; { TGpSQLBuilderCase.Expression }
 
 function TGpSQLBuilderCase.When(const condition: array of const): IGpSQLBuilderCase;
 begin
@@ -463,6 +522,43 @@ begin
   else
     Result := &And(condition);
 end; { TGpSQLBuilderCase.When }
+
+{ TGpSQLBuilderExpression }
+
+constructor TGpSQLBuilderExpression.Create(const expression: string);
+begin
+  FActiveSection := TGpSQLBuilderSection.Create;
+  if expression <> '' then
+    &And(expression);
+end; { TGpSQLBuilderExpression.Create }
+
+function TGpSQLBuilderExpression.&And(const expression: string): IGpSQLBuilderExpression;
+begin
+  FActiveSection.Add(['(', expression, ')'], stAnd);
+  Result := Self;
+end; { TGpSQLBuilderExpression }
+
+function TGpSQLBuilderExpression.&And(
+  const expression: array of const): IGpSQLBuilderExpression;
+begin
+  Result := &And(SqlParamsToStr(expression));
+end; { TGpSQLBuilderExpression }
+
+function TGpSQLBuilderExpression.GetAsString: string;
+begin
+  Result := FActiveSection.AsString;
+end; { TGpSQLBuilderExpression.GetAsString }
+
+function TGpSQLBuilderExpression.&Or(const expression: string): IGpSQLBuilderExpression;
+begin
+  FActiveSection.Add(['(', expression, ')'], stOr);
+  Result := Self;
+end; { TGpSQLBuilderExpression }
+
+function TGpSQLBuilderExpression.&Or(const expression: array of const): IGpSQLBuilderExpression;
+begin
+  Result := &Or(SqlParamsToStr(expression));
+end; { TGpSQLBuilderExpression }
 
 { TGpSQLBuilder }
 
@@ -491,12 +587,17 @@ begin
   Result := Self;
 end; { TGpSQLBuilder.&And }
 
+function TGpSQLBuilder.&And(const expression: IGpSQLBuilderExpression): IGpSQLBuilder;
+begin
+  Result := &And(expression.AsString);
+end; { TGpSQLBuilder }
+
 function TGpSQLBuilder.&As(const alias: string): IGpSQLBuilder;
 begin
   AssertSection([secSelect, secFrom, secLeftJoin]);
   FActiveSection.Add(['AS', alias], stAppend);
   Result := Self;
-end; { TGpSQLBuilder.&As}
+end; { TGpSQLBuilder.&As }
 
 procedure TGpSQLBuilder.AssertSection(section: TGpSQLSection);
 begin
@@ -566,6 +667,16 @@ begin
   FActiveSection.Add('DESC', stAppend);
   Result := Self;
 end; { TGpSQLBuilder.Desc }
+
+function TGpSQLBuilder.Expression(const term: string): IGpSQLBuilderExpression;
+begin
+  Result := TGpSQLBuilderExpression.Create(term);
+end; { TGpSQLBuilder.Expression }
+
+function TGpSQLBuilder.Expression(const term: array of const): IGpSQLBuilderExpression;
+begin
+  Result := Expression(SqlParamsToStr(term));
+end; { TGpSQLBuilder.Expression }
 
 function TGpSQLBuilder.First(num: integer): IGpSQLBuilder;
 begin
@@ -666,6 +777,11 @@ begin
   FActiveSection.Add(['(', expression, ')'], stOr);
   Result := Self;
 end; { TGpSQLBuilder.&Or }
+
+function TGpSQLBuilder.&Or(const expression: IGpSQLBuilderExpression): IGpSQLBuilder;
+begin
+  Result := &Or(expression.AsString);
+end; { TGpSQLBuilder }
 
 function TGpSQLBuilder.Select(const colName: string): IGpSQLBuilder;
 begin
