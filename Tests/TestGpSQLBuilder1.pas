@@ -46,6 +46,8 @@ type
     [Test] procedure TestWhereOr;
     [Test] procedure TestWhereAndOr;
     [Test] procedure TestCaseIntegration;
+    [Test] procedure TestExpressionIntegration;
+    [Test] procedure TestExpressionIntegration2;
     [Test] procedure TestMixed;
     [Test] procedure TestSectionEmpty;
     [Test] procedure TestSectionEmpty2;
@@ -61,6 +63,15 @@ type
     [Test] procedure TestCase2;
     [Test] procedure TestCase3;
     [Test] procedure TestCaseAndOr;
+  end;
+
+  [TestFixture]
+  TTestGpSQLBuilderExpression = class(TObject)
+  public
+    [Test] procedure TestAnd;
+    [Test] procedure TestAnd2;
+    [Test] procedure TestOr;
+    [Test] procedure TestAndOr;
   end;
 
 implementation
@@ -146,6 +157,36 @@ end;
 procedure TTestGpSQLBuilder.TestEmptyResult;
 begin
   Assert.IsEmpty(SQL.AsString);
+end;
+
+procedure TTestGpSQLBuilder.TestExpressionIntegration;
+const
+  CExpected = 'SELECT * FROM Test WHERE (Column1 IS NULL) AND (((Column2 < 0) OR (Column2 > 10)))';
+begin
+  SQL
+    .Select.All
+    .From(DB_TEST)
+    .Where
+      .&And([COL_1, 'IS NULL'])
+      .&And(
+        SQL.Expression([COL_2, '< 0'])
+         .&Or([COL_2, '> 10']).AsString);
+  Assert.AreEqual(CExpected, SQL.AsString);
+end;
+
+procedure TTestGpSQLBuilder.TestExpressionIntegration2;
+const
+  CExpected = 'SELECT * FROM Test WHERE (Column1 IS NULL) AND (((Column2 < 0) OR (Column2 > 10)))';
+begin
+  SQL
+    .Select.All
+    .From(DB_TEST)
+    .Where
+      .&And([COL_1, 'IS NULL'])
+      .&And(
+        SQL.Expression([COL_2, '< 0'])
+         .&Or([COL_2, '> 10']));
+  Assert.AreEqual(CExpected, SQL.AsString);
 end;
 
 procedure TTestGpSQLBuilder.TestGroupBy;
@@ -540,6 +581,58 @@ begin
       .&Then(2)
     .&Else(1);
   Assert.AreEqual(CExpected, SQLCase.AsString);
+end;
+
+{ TTestGpSQLBuilderExpression }
+
+procedure TTestGpSQLBuilderExpression.TestAnd;
+const
+  CExpected = '(Column1 IS NOT NULL) AND (Column2 > 0)';
+var
+  expr: IGpSQLBuilderExpression;
+begin
+  expr := CreateGpSQLBuilder.Expression;
+  expr
+    .&And([COL_1, 'IS NOT NULL'])
+    .&And([COL_2, '> 0']);
+  Assert.AreEqual(CExpected, expr.AsString);
+end;
+
+procedure TTestGpSQLBuilderExpression.TestAnd2;
+const
+  CExpected = '(Column1 IS NOT NULL) AND (Column2 > 0)';
+var
+  expr: IGpSQLBuilderExpression;
+begin
+  expr := CreateGpSQLBuilder.Expression([COL_1, 'IS NOT NULL']);
+  expr.&And([COL_2, '> 0']);
+  Assert.AreEqual(CExpected, expr.AsString);
+end;
+
+procedure TTestGpSQLBuilderExpression.TestAndOr;
+const
+  CExpected = '((Column1 IS NULL) OR (Column1 = 0)) AND ((Column2 > 0) OR (Column2 < 10))';
+var
+  expr: IGpSQLBuilderExpression;
+begin
+  expr := CreateGpSQLBuilder.Expression;
+  expr
+    .&And([COL_1, 'IS NULL'])
+      .&Or([COL_1, '= 0'])
+    .&And([COL_2, '> 0'])
+      .&Or([COL_2, '< 10']);
+  Assert.AreEqual(CExpected, expr.AsString);
+end;
+
+procedure TTestGpSQLBuilderExpression.TestOr;
+const
+  CExpected = '((Column1 IS NOT NULL) OR (Column2 > 0))';
+var
+  expr: IGpSQLBuilderExpression;
+begin
+  expr := CreateGpSQLBuilder.Expression([COL_1, 'IS NOT NULL']);
+  expr.&Or([COL_2, '> 0']);
+  Assert.AreEqual(CExpected, expr.AsString);
 end;
 
 initialization
