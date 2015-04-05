@@ -31,10 +31,12 @@
 ///
 ///   Author            : Primoz Gabrijelcic
 ///   Creation date     : 2010-11-24
-///   Last modification : 2015-04-04
-///   Version           : 2.0
+///   Last modification : 2015-04-05
+///   Version           : 2.01
 ///</para><para>
 ///   History:
+///     2.01: 2015-04-05
+///        - Added integer-accepting overloads for IGpSQLBuilderCase.&Then and .&Else.
 ///     2.0: 2015-04-04
 ///        - Removed AndE and OrE aliases.
 ///        - Removed Column overload which accepted 'alias' parameter.
@@ -42,7 +44,7 @@
 ///        - Removed 'subquery' concept as it was not really useful.
 ///        - Renamed AllColumns to All.
 ///        - Renamed AsAlias to &As.
-///        - &Case.&Then and .&Else values are not automatically quoted.
+///        - IGpSQLBuilderCase.&Then and .&Else values are not automatically quoted.
 ///     1.08: 2015-04-03
 ///        - &And and &Or aliases for AndE and OrE.
 ///     1.07: 2015-04-02
@@ -101,11 +103,13 @@ type
   //
     function  &And(const expression: array of const): IGpSQLBuilderCase; overload;
     function  &And(const expression: string): IGpSQLBuilderCase; overload;
-    function  &Else(const value: string): IGpSQLBuilderCase;
+    function  &Else(const value: string): IGpSQLBuilderCase; overload;
+    function  &Else(const value: int64): IGpSQLBuilderCase; overload;
     function  &End: IGpSQLBuilder;
     function  &Or(const expression: array of const): IGpSQLBuilderCase; overload;
     function  &Or(const expression: string): IGpSQLBuilderCase; overload;
-    function  &Then(const value: string): IGpSQLBuilderCase;
+    function  &Then(const value: string): IGpSQLBuilderCase; overload;
+    function  &Then(const value: int64): IGpSQLBuilderCase; overload;
     function  When(const condition: string): IGpSQLBuilderCase; overload;
     function  When(const condition: array of const): IGpSQLBuilderCase; overload;
     property AsString: string read GetAsString;
@@ -189,11 +193,13 @@ type
     destructor  Destroy; override;
     function  &And(const expression: array of const): IGpSQLBuilderCase; overload;
     function  &And(const expression: string): IGpSQLBuilderCase; overload;
-    function  &Else(const value: string): IGpSQLBuilderCase;
+    function  &Else(const value: string): IGpSQLBuilderCase; overload;
+    function  &Else(const value: int64): IGpSQLBuilderCase; overload;
     function  &End: IGpSQLBuilder;
     function  &Or(const expression: array of const): IGpSQLBuilderCase; overload;
     function  &Or(const expression: string): IGpSQLBuilderCase; overload;
-    function  &Then(const value: string): IGpSQLBuilderCase;
+    function  &Then(const value: string): IGpSQLBuilderCase; overload;
+    function  &Then(const value: int64): IGpSQLBuilderCase; overload;
     function  When(const condition: string): IGpSQLBuilderCase; overload;
     function  When(const condition: array of const): IGpSQLBuilderCase; overload;
     property AsString: string read GetAsString;
@@ -393,6 +399,11 @@ begin
   Result := Self;
 end; { TGpSQLBuilderCase }
 
+function TGpSQLBuilderCase.&Else(const value: int64): IGpSQLBuilderCase;
+begin
+  Result := &Else(IntToStr(value));
+end; { TGpSQLBuilderCase }
+
 function TGpSQLBuilderCase.&End: IGpSQLBuilder;
 begin
   FSQLBuilder.ActiveSection.Add(AsString, stList);
@@ -431,6 +442,11 @@ begin
       FWhenList[FWhenList.Count - 1].Key,
       value);
   Result := Self;
+end; { TGpSQLBuilderCase }
+
+function TGpSQLBuilderCase.&Then(const value: int64): IGpSQLBuilderCase;
+begin
+  Result := &Then(IntToStr(value));
 end; { TGpSQLBuilderCase }
 
 function TGpSQLBuilderCase.When(const condition: array of const): IGpSQLBuilderCase;
