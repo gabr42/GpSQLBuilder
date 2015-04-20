@@ -388,7 +388,7 @@ end; { TGpSQLBuilderCase.When }
 
 function TGpSQLBuilderCase.When(const condition: string): IGpSQLBuilderCase;
 begin
-  FActiveSection := CreateSection('');
+  FActiveSection := CreateSQLSection;
   FWhenList.Add(TPair<IGpSQLBuilderSection,string>.Create(FActiveSection, ''));
   if condition = '' then
     Result := Self
@@ -400,7 +400,7 @@ end; { TGpSQLBuilderCase.When }
 
 constructor TGpSQLBuilderExpression.Create(const expression: string);
 begin
-  FActiveSection := CreateSection('');
+  FActiveSection := CreateSQLSection;
   if expression <> '' then
     &And(expression);
 end; { TGpSQLBuilderExpression.Create }
@@ -438,7 +438,7 @@ end; { TGpSQLBuilderExpression }
 constructor TGpSQLBuilder.Create;
 begin
   inherited;
-  FAST := CreateAST;
+  FAST := CreateSQLAST;
 end; { TGpSQLBuilder.Create }
 
 function TGpSQLBuilder.All: IGpSQLBuilder;
@@ -526,12 +526,14 @@ end; { TGpSQLBuilder.ClearAll }
 
 function TGpSQLBuilder.Column(const colName: string): IGpSQLBuilder;
 begin
+//  FActiveSection.Columns.Add(TGpSQLBuilderColumn.Create(colName));
   FActiveSection.Add(colName, stList);
   Result := Self;
 end; { TGpSQLBuilder.Column }
 
 function TGpSQLBuilder.Column(const dbName, colName: string): IGpSQLBuilder;
 begin
+//  FActiveSection.Columns.Add(TGpSQLBuilderColumn.Create(dbName + '.' + colName));
   FActiveSection.Add([dbName, '.', colName], stList);
   Result := Self;
 end; { TGpSQLBuilder.Column }
@@ -575,14 +577,7 @@ function TGpSQLBuilder.GetAsString: string;
 var
   sect: TGpSQLSection;
 begin
-  Result := '';
-  for sect := Low(TGpSQLSection) to High(TGpSQLSection) do begin
-    if AST[sect].AsString <> '' then begin
-      if Result <> '' then
-        Result := Result + ' ';
-      Result := Result + AST[sect].Name + ' ' + AST[sect].AsString;
-    end;
-  end;
+  Result := CreateSQLSerializer(AST).AsString;
 end; { TGpSQLBuilder.GetAsString }
 
 function TGpSQLBuilder.GetSection(sqlSection: TGpSQLSection): IGpSQLBuilderSection;
@@ -622,7 +617,7 @@ function TGpSQLBuilder.LeftJoin(const dbName: string): IGpSQLBuilder;
 begin
   FActiveSection := AST[secLeftJoin];
   if (FActiveSection.AsString <> '') then // previous LEFT JOIN content
-    FActiveSection.Add(AST[secLeftJoin].Name);
+    FActiveSection.Add('LEFT JOIN');
   FActiveSection.Add([dbName, 'ON']);
   Result := Self;
 end; { TGpSQLBuilder.LeftJoin }

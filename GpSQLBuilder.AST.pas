@@ -40,14 +40,24 @@ unit GpSQLBuilder.AST;
 
 interface
 
+uses
+  System.Generics.Collections;
+
 type
   TGpSQLSection = (secSelect, secFrom, secLeftJoin, secWhere, secGroupBy, secHaving, secOrderBy);
   TGpSQLSections = set of TGpSQLSection;
   TGpSQLStringType = (stNormal, stAnd, stOr, stList, stAppend);
 
+  TGpSQLBuilderColumn = record
+    Name : string;
+    Alias: string;
+    constructor Create(const aName: string);
+  end; { TGpSQLBuilderColumn }
+
   IGpSQLBuilderSection = interface ['{BE0A0FF9-AD70-40C5-A1C2-7FA2F7061153}']
     function  GetAsString: string;
-    function  GetName: string;
+    function  GetColumns: TList<TGpSQLBuilderColumn>;
+//    function  GetName: string;
   //
     procedure Add(const params: array of const; paramType: TGpSQLStringType = stNormal;
       const pushBefore: string = ''); overload;
@@ -55,7 +65,8 @@ type
       const pushBefore: string = ''); overload;
     procedure Clear;
     property AsString: string read GetAsString;
-    property Name: string read GetName; // TODO -oPrimoz Gabrijelcic : Temporary, should be part of the stringifying mechanism
+    property Columns: TList<TGpSQLBuilderColumn> read GetColumns;
+//    property Name: string read GetName; // TODO -oPrimoz Gabrijelcic : Temporary, should be part of the stringifying mechanism
   end; { IGpSQLBuilderSection }
 
   IGpSQLBuilderAST = interface
@@ -64,10 +75,10 @@ type
     property Section[sect: TGpSQLSection]: IGpSQLBuilderSection read GetSection; default;
   end; { IGpSQLBuilderAST }
 
-  function CreateAST: IGpSQLBuilderAST;
+  function CreateSQLAST: IGpSQLBuilderAST;
 
   // TODO -oPrimoz Gabrijelcic : maybe could be removed at the end?
-  function CreateSection(const secName: string): IGpSQLBuilderSection;
+  function CreateSQLSection: IGpSQLBuilderSection;
 
 implementation
 
@@ -80,31 +91,35 @@ type
   TGpSQLBuilderSection = class(TInterfacedObject, IGpSQLBuilderSection)
   strict private
     FAsString        : string;
-    FName            : string;
+    FColumns         : TList<TGpSQLBuilderColumn>;
+//    FName            : string;
     FInsertedParen   : boolean;
     FIsAndExpr       : boolean;
     FIsList          : boolean;
     FLastAndInsertion: integer;
   strict protected
     function  GetAsString: string;
-    function  GetName: string;
+    function  GetColumns: TList<TGpSQLBuilderColumn>;
+//    function  GetName: string;
   public
-    constructor Create(const name: string);
+    constructor Create;
+    destructor  Destroy; override;
     procedure Add(const params: array of const; paramType: TGpSQLStringType = stNormal;
       const pushBefore: string = ''); overload;
     procedure Add(const params: string; paramType: TGpSQLStringType = stNormal;
       const pushBefore: string = ''); overload;
     procedure Clear;
     property AsString: string read GetAsString;
-    property Name: string read GetName;
+    property Columns: TList<TGpSQLBuilderColumn> read GetColumns;
+//    property Name: string read GetName;
   end; { TGpSQLBuilderSection }
 
   TGpSQLBuilderAST = class(TInterfacedObject, IGpSQLBuilderAST)
   strict private // TODO -oPrimoz Gabrijelcic : temporary, this belong to serialization
-  const
-    FSectionNames : array [TGpSQLSection] of string = (
-      'SELECT', 'FROM', 'LEFT JOIN', 'WHERE', 'GROUP BY', 'HAVING', 'ORDER BY'
-    );
+//  const
+//    FSectionNames : array [TGpSQLSection] of string = (
+//      'SELECT', 'FROM', 'LEFT JOIN', 'WHERE', 'GROUP BY', 'HAVING', 'ORDER BY'
+//    );
   strict private
     FSections: array [TGpSQLSection] of IGpSQLBuilderSection;
   strict protected
@@ -116,23 +131,37 @@ type
 
 { exports }
 
-function CreateAST: IGpSQLBuilderAST;
+function CreateSQLAST: IGpSQLBuilderAST;
 begin
   Result := TGpSQLBuilderAST.Create;
-end; { CreateAST }
+end; { CreateSQLAST }
 
-function CreateSection(const secName: string): IGpSQLBuilderSection;
+function CreateSQLSection: IGpSQLBuilderSection;
 begin
-  Result := TGpSQLBuilderSection.Create(secName);
+  Result := TGpSQLBuilderSection.Create;
 end; { CreateSection }
+
+{ TGpSQLBuilderColumn }
+
+constructor TGpSQLBuilderColumn.Create(const aName: string);
+begin
+  Name := aName;
+end; { TGpSQLBuilderColumn.Create }
 
 { TGpSQLBuilderSection }
 
-constructor TGpSQLBuilderSection.Create(const name: string);
+constructor TGpSQLBuilderSection.Create;
 begin
   inherited Create;
-  FName := name;
+//  FName := name;
+  FColumns := TList<TGpSQLBuilderColumn>.Create;
 end; { TGpSQLBuilderSection.Create }
+
+destructor TGpSQLBuilderSection.Destroy;
+begin
+  FreeAndNil(FColumns);
+  inherited;
+end; { TGpSQLBuilderSection.Destroy }
 
 procedure TGpSQLBuilderSection.Add(const params: array of const; paramType: TGpSQLStringType;
   const pushBefore: string);
@@ -190,10 +219,15 @@ begin
   Result := FAsString;
 end; { TGpSQLBuilderSection.GetAsString }
 
-function TGpSQLBuilderSection.GetName: string;
+function TGpSQLBuilderSection.GetColumns: TList<TGpSQLBuilderColumn>;
 begin
-  Result := FName;
-end; { TGpSQLBuilderSection.GetName }
+  Result := FColumns;
+end; { TGpSQLBuilderSection.GetColumns }
+
+//function TGpSQLBuilderSection.GetName: string;
+//begin
+//  Result := FName;
+//end; { TGpSQLBuilderSection.GetName }
 
 { TGpSQLBuilderAST }
 
@@ -203,7 +237,7 @@ var
 begin
   inherited;
   for section := Low(TGpSQLSection) to High(TGpSQLSection) do
-    FSections[section] := TGpSQLBuilderSection.Create(FSectionNames[section]);
+    FSections[section] := TGpSQLBuilderSection.Create;
 end; { TGpSQLBuilderAST.Create }
 
 function TGpSQLBuilderAST.GetSection(sect: TGpSQLSection): IGpSQLBuilderSection;

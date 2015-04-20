@@ -43,6 +43,16 @@ unit GpSQLBuilder.Serialize;
 
 interface
 
+uses
+  GpSQLBuilder.AST;
+
+type
+  IGpSQLSerializer = interface ['{E6355E23-1D91-4536-A693-E1E33B0E2707}']
+    function AsString: string;
+  end; { IGpSQLSerializer }
+
+function CreateSQLSerializer(const ast: IGpSQLBuilderAST): IGpSQLSerializer;
+
 // TODO -oPrimoz Gabrijelcic : temporary solution
 function SqlParamsToStr(const params: array of const): string;
 
@@ -50,6 +60,21 @@ implementation
 
 uses
   System.SysUtils;
+
+type
+  TGpSQLSerializer = class(TInterfacedObject, IGpSQLSerializer)
+  const
+    FSectionNames: array [TGpSQLSection] of string = (
+      'SELECT', 'FROM', 'LEFT JOIN', 'WHERE', 'GROUP BY', 'HAVING', 'ORDER BY'
+    );
+  strict private
+    FAST: IGpSQLBuilderAST;
+  public
+    constructor Create(const AAST: IGpSQLBuilderAST);
+    function AsString: string;
+  end; { TGpSQLSerializer }
+
+{ globals }
 
 function VarRecToString(const vr: TVarRec): string;
 const
@@ -79,6 +104,8 @@ begin
   end;
 end; { VarRecToString }
 
+{ exports }
+
 function SqlParamsToStr(const params: array of const): string;
 var
   iParam: integer;
@@ -99,5 +126,30 @@ begin
     Result := Result + sParam;
   end;
 end; { SqlParamsToStr }
+
+function CreateSQLSerializer(const ast: IGpSQLBuilderAST): IGpSQLSerializer;
+begin
+  Result := TGpSQLSerializer.Create(ast);
+end; { CreateSQLSerializer }
+
+constructor TGpSQLSerializer.Create(const AAST: IGpSQLBuilderAST);
+begin
+  inherited Create;
+  FAST := AAST;
+end; { TGpSQLSerializer.Create }
+
+function TGpSQLSerializer.AsString: string;
+var
+  sect: TGpSQLSection;
+begin
+  Result := '';
+  for sect := Low(TGpSQLSection) to High(TGpSQLSection) do begin
+    if FAST[sect].AsString <> '' then begin
+      if Result <> '' then
+        Result := Result + ' ';
+      Result := Result + FSectionNames[sect]+ ' ' + FAST[sect].AsString;
+    end;
+  end;
+end; { TGpSQLSerializer.AsString }
 
 end.
