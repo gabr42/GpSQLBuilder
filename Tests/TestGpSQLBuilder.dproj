@@ -96,6 +96,8 @@
 			</DelphiCompile>
 			<DCCReference Include="..\GpSQLBuilder.pas"/>
 			<DCCReference Include="TestGpSQLBuilder1.pas"/>
+			<DCCReference Include="..\GpSQLBuilder.AST.pas"/>
+			<DCCReference Include="..\GpSQLBuilder.Serialize.pas"/>
 			<BuildConfiguration Include="Release">
 				<Key>Cfg_2</Key>
 				<CfgParent>Base</CfgParent>

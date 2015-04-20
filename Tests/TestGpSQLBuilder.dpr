@@ -5,14 +5,13 @@ program TestGpSQLBuilder;
 {$ENDIF}{$STRONGLINKTYPES ON}
 uses
   SysUtils,
-  {$IFDEF TESTINSIGHT}
-  TestInsight.DUnitX,
-  {$ENDIF }
   DUnitX.Loggers.Console,
   DUnitX.Loggers.Xml.NUnit,
   DUnitX.TestFramework,
   GpSQLBuilder in '..\GpSQLBuilder.pas',
-  TestGpSQLBuilder1 in 'TestGpSQLBuilder1.pas';
+  TestGpSQLBuilder1 in 'TestGpSQLBuilder1.pas',
+  GpSQLBuilder.AST in '..\GpSQLBuilder.AST.pas',
+  GpSQLBuilder.Serialize in '..\GpSQLBuilder.Serialize.pas';
 
 var
   runner : ITestRunner;

@@ -32,24 +32,28 @@
 ///   Author            : Primoz Gabrijelcic
 ///   Creation date     : 2010-11-24
 ///   Last modification : 2015-04-20
-///   Version           : 2.02a
+///   Version           : 3.0
 ///</para><para>
 ///   History:
+///     3.0:
+///       - Internal redesign: SQL is generated as an abstract syntax tree and only
+///         converted to text when AsString is called. This allows implementing the
+///         'pretty print' function and makes the code less ugly.
 ///     2.02a: 2015-04-20
-///        - Corrected SQL generation for LeftJoin().&As() construct.
+///       - Corrected SQL generation for LeftJoin().&As() construct.
 ///     2.02: 2015-04-05
-///        - Reimplemented old .Subquery mechanism as .Expression: IGpSQLBuilderExpression.
-///        - Added &And and &Or overloads accepting IGpSQLBuilderExpression.
+///       - Reimplemented old .Subquery mechanism as .Expression: IGpSQLBuilderExpression.
+///       - Added &And and &Or overloads accepting IGpSQLBuilderExpression.
 ///     2.01: 2015-04-05
-///        - Added integer-accepting overloads for IGpSQLBuilderCase.&Then and .&Else.
+///       - Added integer-accepting overloads for IGpSQLBuilderCase.&Then and .&Else.
 ///     2.0: 2015-04-04
-///        - Removed AndE and OrE aliases.
-///        - Removed Column overload which accepted 'alias' parameter.
-///        - Removed 'dbAlias' parameter from From and LeftJoin methods.
-///        - Removed 'subquery' concept as it was not really useful.
-///        - Renamed AllColumns to All.
-///        - Renamed AsAlias to &As.
-///        - IGpSQLBuilderCase.&Then and .&Else values are not automatically quoted.
+///       - Removed AndE and OrE aliases.
+///       - Removed Column overload which accepted 'alias' parameter.
+///       - Removed 'dbAlias' parameter from From and LeftJoin methods.
+///       - Removed 'subquery' concept as it was not really useful.
+///       - Renamed AllColumns to All.
+///       - Renamed AsAlias to &As.
+///       - IGpSQLBuilderCase.&Then and .&Else values are not automatically quoted.
 ///     1.08: 2015-04-03
 ///        - &And and &Or aliases for AndE and OrE.
 ///     1.07: 2015-04-02
@@ -166,45 +170,14 @@ implementation
 uses
   System.SysUtils,
   System.StrUtils,
-  System.Generics.Collections;
+  System.Generics.Collections,
+  GpSQLBuilder.AST,
+  GpSQLBuilder.Serialize;
 
 type
-  TGpSQLSection = (secSelect, secFrom, secLeftJoin, secWhere, secGroupBy, secHaving, secOrderBy);
-  TGpSQLSections = set of TGpSQLSection;
-  TGpSQLStringType = (stNormal, stAnd, stOr, stList, stAppend);
-
-  IGpSQLBuilderSection = interface ['{BE0A0FF9-AD70-40C5-A1C2-7FA2F7061153}']
-    function  GetAsString: string;
-  //
-    procedure Add(const params: array of const; paramType: TGpSQLStringType = stNormal;
-      const pushBefore: string = ''); overload;
-    procedure Add(const params: string; paramType: TGpSQLStringType = stNormal;
-      const pushBefore: string = ''); overload;
-    procedure Clear;
-    property AsString: string read GetAsString;
-  end; { IGpSQLBuilderSection }
-
   IGpSQLBuilderEx = interface ['{9F70DAA3-0900-4DFD-B967-C56D23513609}']
     function  ActiveSection: IGpSQLBuilderSection;
   end; { IGpSQLBuilderEx }
-
-  TGpSQLBuilderSection = class(TInterfacedObject, IGpSQLBuilderSection)
-  strict private
-    FAsString        : string;
-    FInsertedParen   : boolean;
-    FIsAndExpr       : boolean;
-    FIsList          : boolean;
-    FLastAndInsertion: integer;
-  strict protected
-    function  GetAsString: string;
-  public
-    procedure Add(const params: array of const; paramType: TGpSQLStringType = stNormal;
-      const pushBefore: string = ''); overload;
-    procedure Add(const params: string; paramType: TGpSQLStringType = stNormal;
-      const pushBefore: string = ''); overload;
-    procedure Clear;
-    property AsString: string read GetAsString;
-  end; { TGpSQLBuilderSection }
 
   TGpSQLBuilderExpression = class(TInterfacedObject, IGpSQLBuilderExpression)
   strict private
@@ -248,22 +221,18 @@ type
     function  When(const condition: string): IGpSQLBuilderCase; overload;
     function  When(const condition: array of const): IGpSQLBuilderCase; overload;
     property AsString: string read GetAsString;
-  end; { IGpSQLBuilderCase }
+  end; { TGpSQLBuilderCase }
 
   TGpSQLBuilder = class(TInterfacedObject, IGpSQLBuilder, IGpSQLBuilderEx)
   strict private
-  const
-    FSectionNames : array [TGpSQLSection] of string = (
-      'SELECT', 'FROM', 'LEFT JOIN', 'WHERE', 'GROUP BY', 'HAVING', 'ORDER BY'
-    );
-  strict private
     FActiveSection: IGpSQLBuilderSection;
-    FSections     : array [TGpSQLSection] of IGpSQLBuilderSection;
+    FAST: IGpSQLBuilderAST;
   strict protected
     procedure AssertSection(section: TGpSQLSection); overload;
     procedure AssertSection(sections: TGpSQLSections); overload;
     function  GetAsString: string;
     function  GetSection(sqlSection: TGpSQLSection): IGpSQLBuilderSection;
+    property AST: IGpSQLBuilderAST read FAST;
   public
     constructor Create;
     function  ActiveSection: IGpSQLBuilderSection;
@@ -309,115 +278,6 @@ function CreateGpSQLBuilder: IGpSQLBuilder;
 begin
   Result := TGpSQLBuilder.Create;
 end; { CreateGpSQLBuilder }
-
-{ globals }
-
-function VarRecToString(const vr: TVarRec): string;
-const
-  BoolChars: array [boolean] of string = ('F', 'T');
-begin
-  case vr.VType of
-    vtInteger:    Result := IntToStr(vr.VInteger);
-    vtBoolean:    Result := BoolChars[vr.VBoolean];
-    vtChar:       Result := char(vr.VChar);
-    vtExtended:   Result := FloatToStr(vr.VExtended^);
-    vtString:     Result := string(vr.VString^);
-    vtPointer:    Result := IntToHex(integer(vr.VPointer),8);
-    vtPChar:      Result := string(vr.VPChar^);
-    vtObject:     Result := vr.VObject.ClassName;
-    vtClass:      Result := vr.VClass.ClassName;
-    vtWideChar:   Result := string(vr.VWideChar);
-    vtPWideChar:  Result := string(vr.VPWideChar^);
-    vtAnsiString: Result := string(vr.VAnsiString);
-    vtCurrency:   Result := CurrToStr(vr.VCurrency^);
-    vtVariant:    Result := string(vr.VVariant^);
-    vtWideString: Result := string(WideString(vr.VWideString));
-    vtInt64:      Result := IntToStr(vr.VInt64^);
-    {$IFDEF Unicode}
-    vtUnicodeString: Result := string(vr.VUnicodeString);
-    {$ENDIF}
-    else raise Exception.Create('VarRecToString: Unsupported parameter type');
-  end;
-end; { VarRecToString }
-
-function SqlParamsToStr(const params: array of const): string;
-var
-  iParam: integer;
-  lastCh: char;
-  sParam: string;
-begin
-  Result := '';
-  for iParam := Low(params) to High(params) do begin
-    sParam := VarRecToString(params[iparam]);
-    if Result = '' then
-      lastCh := ' '
-    else
-      lastCh := Result[Length(Result)];
-    if (lastCh <> '.') and (lastCh <> '(') and (lastCh <> ' ') and (lastCh <> ':') and
-       (sParam <> ',') and (sParam <> '.') and (sParam <> ')')
-    then
-      Result := Result + ' ';
-    Result := Result + sParam;
-  end;
-end; { SqlParamsToStr }
-
-{ TGpSQLBuilderSection }
-
-procedure TGpSQLBuilderSection.Add(const params: array of const; paramType: TGpSQLStringType;
-  const pushBefore: string);
-var
-  sParams: string;
-begin
-  if paramType = stOr then begin
-    if not FIsAndExpr then
-      raise Exception.Create('TGpSQLBuilderSection: OrE without preceding AndE');
-    if not FInsertedParen then begin
-      Insert('(', FAsString, FLastAndInsertion);
-      FInsertedParen := true;
-    end
-    else
-      Delete(FAsString, Length(FAsString), 1);
-  end;
-  if FIsAndExpr and (paramType = stAnd) then
-    FAsString := SqlParamsToStr([FAsString, 'AND']);
-  if paramType = stAnd then begin
-    FLastAndInsertion := Length(FAsString) + 2; // +1 because we will insert '(' _after_ the last character and +1 because query builder will append ' ' to 'AND' in the next step
-    FInsertedParen := false;
-  end;
-  if FIsList and (paramType = stList) then
-    FAsString := SqlParamsToStr([FAsString, ',']);
-  sParams := SqlParamsToStr(params);
-  if paramType = stOr then
-    FAsString := SqlParamsToStr([FAsString, 'OR', sParams, ')'])
-  else if (pushBefore = '') or (not EndsText(pushBefore, FAsString)) then
-    FAsString := SqlParamsToStr([FAsString, sParams])
-  else begin
-    Delete(FAsString, Length(FAsString) - Length(pushBefore) + 1, Length(pushBefore));
-    FAsString := SqlParamsToStr([FAsString, sParams, pushBefore]);
-  end;
-  if not (paramType in [stAppend, stOr]) then begin
-    FIsAndExpr := (paramType = stAnd);
-    FIsList := (paramType = stList);
-  end;
-end; { TGpSQLBuilderSection.Add }
-
-procedure TGpSQLBuilderSection.Add(const params: string; paramType: TGpSQLStringType;
-  const pushBefore: string);
-begin
-  Add([params], paramType, pushBefore);
-end; { TGpSQLBuilderSection.Add }
-
-procedure TGpSQLBuilderSection.Clear;
-begin
-  FAsString := '';
-  FIsAndExpr := false;
-  FIsList := false;
-end; { TGpSQLBuilderSection.Clear }
-
-function TGpSQLBuilderSection.GetAsString: string;
-begin
-  Result := FAsString;
-end; { TGpSQLBuilderSection.GetAsString }
 
 { TGpSQLBuilderCase }
 
@@ -528,7 +388,7 @@ end; { TGpSQLBuilderCase.When }
 
 function TGpSQLBuilderCase.When(const condition: string): IGpSQLBuilderCase;
 begin
-  FActiveSection := TGpSQLBuilderSection.Create;
+  FActiveSection := CreateSection('');
   FWhenList.Add(TPair<IGpSQLBuilderSection,string>.Create(FActiveSection, ''));
   if condition = '' then
     Result := Self
@@ -540,7 +400,7 @@ end; { TGpSQLBuilderCase.When }
 
 constructor TGpSQLBuilderExpression.Create(const expression: string);
 begin
-  FActiveSection := TGpSQLBuilderSection.Create;
+  FActiveSection := CreateSection('');
   if expression <> '' then
     &And(expression);
 end; { TGpSQLBuilderExpression.Create }
@@ -576,12 +436,9 @@ end; { TGpSQLBuilderExpression }
 { TGpSQLBuilder }
 
 constructor TGpSQLBuilder.Create;
-var
-  section: TGpSQLSection;
 begin
   inherited;
-  for section := Low(TGpSQLSection) to High(TGpSQLSection) do
-    FSections[section] := TGpSQLBuilderSection.Create;
+  FAST := CreateAST;
 end; { TGpSQLBuilder.Create }
 
 function TGpSQLBuilder.All: IGpSQLBuilder;
@@ -612,7 +469,7 @@ begin
   AssertSection([secSelect, secFrom, secLeftJoin]);
 
   //temporary hack to push 'AS' before the 'ON' inserted by the LEFT JOIN
-  if FActiveSection = FSections[secLeftJoin] then
+  if FActiveSection = AST[secLeftJoin] then
     pushBefore := 'ON'
   else
     pushBefore := '';
@@ -623,7 +480,7 @@ end; { TGpSQLBuilder.&As }
 
 procedure TGpSQLBuilder.AssertSection(section: TGpSQLSection);
 begin
-  if FActiveSection <> FSections[section] then
+  if FActiveSection <> AST[section] then
     raise Exception.Create('TGpSQLBuilder: Wrong time and place');
 end; { TGpSQLBuilder.AssertSection }
 
@@ -632,7 +489,7 @@ var
   section: TGpSQLSection;
 begin
   for section := Low(TGpSQLSection) to High(TGpSQLSection) do
-    if (section in sections) and (FSections[section] = FActiveSection) then
+    if (section in sections) and (AST[section] = FActiveSection) then
       Exit;
   raise Exception.Create('TGpSQLBuilder: Wrong time and place');
 end; { TGpSQLBuilder.AssertSection }
@@ -663,7 +520,7 @@ var
   section: TGpSQLSection;
 begin
   for section := Low(TGpSQLSection) to High(TGpSQLSection) do
-    FSections[section].Clear;
+    AST[section].Clear;
   Result := Self;
 end; { TGpSQLBuilder.ClearAll }
 
@@ -709,7 +566,7 @@ end; { TGpSQLBuilder.First }
 
 function TGpSQLBuilder.From(const dbName: string): IGpSQLBuilder;
 begin
-  FActiveSection := FSections[secFrom];
+  FActiveSection := AST[secFrom];
   FActiveSection.Add(dbName, stList);
   Result := Self;
 end; { TGpSQLBuilder.From }
@@ -720,22 +577,22 @@ var
 begin
   Result := '';
   for sect := Low(TGpSQLSection) to High(TGpSQLSection) do begin
-    if FSections[sect].AsString <> '' then begin
+    if AST[sect].AsString <> '' then begin
       if Result <> '' then
         Result := Result + ' ';
-      Result := Result + FSectionNames[sect] + ' ' + FSections[sect].AsString;
+      Result := Result + AST[sect].Name + ' ' + AST[sect].AsString;
     end;
   end;
 end; { TGpSQLBuilder.GetAsString }
 
 function TGpSQLBuilder.GetSection(sqlSection: TGpSQLSection): IGpSQLBuilderSection;
 begin
-  Result := FSections[sqlSection];
+  Result := AST[sqlSection];
 end; { TGpSQLBuilder.GetSection }
 
 function TGpSQLBuilder.GroupBy(const colName: string): IGpSQLBuilder;
 begin
-  FActiveSection := FSections[secGroupBy];
+  FActiveSection := AST[secGroupBy];
   if colName = '' then
     Result := Self
   else
@@ -744,7 +601,7 @@ end; { TGpSQLBuilder.GroupBy }
 
 function TGpSQLBuilder.Having(const expression: string): IGpSQLBuilder;
 begin
-  FActiveSection := FSections[secHaving];
+  FActiveSection := AST[secHaving];
   if expression = '' then
     Result := Self
   else
@@ -763,9 +620,9 @@ end; { TGpSQLBuilder.IsEmpty }
 
 function TGpSQLBuilder.LeftJoin(const dbName: string): IGpSQLBuilder;
 begin
-  FActiveSection := FSections[secLeftJoin];
+  FActiveSection := AST[secLeftJoin];
   if (FActiveSection.AsString <> '') then // previous LEFT JOIN content
-    FActiveSection.Add(FSectionNames[secLeftJoin]);
+    FActiveSection.Add(AST[secLeftJoin].Name);
   FActiveSection.Add([dbName, 'ON']);
   Result := Self;
 end; { TGpSQLBuilder.LeftJoin }
@@ -782,7 +639,7 @@ end; { TGpSQLBuilder }
 
 function TGpSQLBuilder.OrderBy(const colName: string): IGpSQLBuilder;
 begin
-  FActiveSection := FSections[secOrderBy];
+  FActiveSection := AST[secOrderBy];
   if colName = '' then
     Result := Self
   else
@@ -807,7 +664,7 @@ end; { TGpSQLBuilder }
 
 function TGpSQLBuilder.Select(const colName: string): IGpSQLBuilder;
 begin
-  FActiveSection := FSections[secSelect];
+  FActiveSection := AST[secSelect];
   if colName = '' then
     Result := Self
   else
@@ -823,7 +680,7 @@ end; { TGpSQLBuilder.Skip }
 
 function TGpSQLBuilder.Where(const expression: string): IGpSQLBuilder;
 begin
-  FActiveSection := FSections[secWhere];
+  FActiveSection := AST [secWhere];
   if expression = '' then
     Result := Self
   else
