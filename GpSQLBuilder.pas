@@ -31,10 +31,12 @@
 ///
 ///   Author            : Primoz Gabrijelcic
 ///   Creation date     : 2010-11-24
-///   Last modification : 2015-04-05
-///   Version           : 2.02
+///   Last modification : 2015-04-20
+///   Version           : 2.02a
 ///</para><para>
 ///   History:
+///     2.02a: 2015-04-20
+///        - Corrected SQL generation for LeftJoin().&As() construct.
 ///     2.02: 2015-04-05
 ///        - Reimplemented old .Subquery mechanism as .Expression: IGpSQLBuilderExpression.
 ///        - Added &And and &Or overloads accepting IGpSQLBuilderExpression.
@@ -163,6 +165,7 @@ implementation
 
 uses
   System.SysUtils,
+  System.StrUtils,
   System.Generics.Collections;
 
 type
@@ -173,8 +176,10 @@ type
   IGpSQLBuilderSection = interface ['{BE0A0FF9-AD70-40C5-A1C2-7FA2F7061153}']
     function  GetAsString: string;
   //
-    procedure Add(const params: array of const; paramType: TGpSQLStringType = stNormal); overload;
-    procedure Add(const params: string; paramType: TGpSQLStringType = stNormal); overload;
+    procedure Add(const params: array of const; paramType: TGpSQLStringType = stNormal;
+      const pushBefore: string = ''); overload;
+    procedure Add(const params: string; paramType: TGpSQLStringType = stNormal;
+      const pushBefore: string = ''); overload;
     procedure Clear;
     property AsString: string read GetAsString;
   end; { IGpSQLBuilderSection }
@@ -193,8 +198,10 @@ type
   strict protected
     function  GetAsString: string;
   public
-    procedure Add(const params: array of const; paramType: TGpSQLStringType = stNormal); overload;
-    procedure Add(const params: string; paramType: TGpSQLStringType = stNormal); overload;
+    procedure Add(const params: array of const; paramType: TGpSQLStringType = stNormal;
+      const pushBefore: string = ''); overload;
+    procedure Add(const params: string; paramType: TGpSQLStringType = stNormal;
+      const pushBefore: string = ''); overload;
     procedure Clear;
     property AsString: string read GetAsString;
   end; { TGpSQLBuilderSection }
@@ -356,7 +363,8 @@ end; { SqlParamsToStr }
 
 { TGpSQLBuilderSection }
 
-procedure TGpSQLBuilderSection.Add(const params: array of const; paramType: TGpSQLStringType);
+procedure TGpSQLBuilderSection.Add(const params: array of const; paramType: TGpSQLStringType;
+  const pushBefore: string);
 var
   sParams: string;
 begin
@@ -381,17 +389,22 @@ begin
   sParams := SqlParamsToStr(params);
   if paramType = stOr then
     FAsString := SqlParamsToStr([FAsString, 'OR', sParams, ')'])
-  else
-    FAsString := SqlParamsToStr([FAsString, sParams]);
+  else if (pushBefore = '') or (not EndsText(pushBefore, FAsString)) then
+    FAsString := SqlParamsToStr([FAsString, sParams])
+  else begin
+    Delete(FAsString, Length(FAsString) - Length(pushBefore) + 1, Length(pushBefore));
+    FAsString := SqlParamsToStr([FAsString, sParams, pushBefore]);
+  end;
   if not (paramType in [stAppend, stOr]) then begin
     FIsAndExpr := (paramType = stAnd);
     FIsList := (paramType = stList);
   end;
 end; { TGpSQLBuilderSection.Add }
 
-procedure TGpSQLBuilderSection.Add(const params: string; paramType: TGpSQLStringType);
+procedure TGpSQLBuilderSection.Add(const params: string; paramType: TGpSQLStringType;
+  const pushBefore: string);
 begin
-  Add([params], paramType);
+  Add([params], paramType, pushBefore);
 end; { TGpSQLBuilderSection.Add }
 
 procedure TGpSQLBuilderSection.Clear;
@@ -593,9 +606,18 @@ begin
 end; { TGpSQLBuilder }
 
 function TGpSQLBuilder.&As(const alias: string): IGpSQLBuilder;
+var
+  pushBefore: string;
 begin
   AssertSection([secSelect, secFrom, secLeftJoin]);
-  FActiveSection.Add(['AS', alias], stAppend);
+
+  //temporary hack to push 'AS' before the 'ON' inserted by the LEFT JOIN
+  if FActiveSection = FSections[secLeftJoin] then
+    pushBefore := 'ON'
+  else
+    pushBefore := '';
+
+  FActiveSection.Add(['AS', alias], stAppend, pushBefore);
   Result := Self;
 end; { TGpSQLBuilder.&As }
 

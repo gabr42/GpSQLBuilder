@@ -26,12 +26,12 @@ type
     [Test] procedure TestDBAlias;
     [Test] procedure TestColumnAlias;
     [Test] procedure TestSelectFirst;
-    [Test] procedure TestSelectFirst2;
     [Test] procedure TestSelectFirstSkip;
     [Test] procedure TestSelectWhere;
     [Test] procedure TestLeftJoin;
     [Test] procedure TestLeftJoin2;
     [Test] procedure TestLeftJoinAnd;
+    [Test] procedure TestLeftJoinAlias;
     [Test] procedure TestDoubleLeftJoin;
     [Test] procedure TestGroupBy;
     [Test] procedure TestGroupByHaving;
@@ -84,6 +84,7 @@ const
   DB_TEST = 'Test';
   DB_TEST_ALIAS = 'TestAlias';
   DB_DETAIL = 'Detail';
+  DB_DETAIL_ALIAS = 'DetailAlias';
   DB_SUB = 'Sub';
 
   COL_ALL_ALIAS = 'ALL';
@@ -231,6 +232,18 @@ begin
     .Select.All
     .From(DB_TEST)
      .LeftJoin(DB_DETAIL).On(Format('%s = %s', [COL_1, COL_DETAIL_ID]));
+  Assert.AreEqual(CExpected, SQL.AsString);
+end;
+
+procedure TTestGpSQLBuilder.TestLeftJoinAlias;
+const
+  CExpected = 'SELECT * FROM Test LEFT JOIN Detail AS DetailAlias ON (Column1 = DetailID)';
+begin
+  SQL
+    .Select.All
+    .From(DB_TEST)
+     .LeftJoin(DB_DETAIL).&As(DB_DETAIL_ALIAS)
+       .On([COL_1, '=', COL_DETAIL_ID]);
   Assert.AreEqual(CExpected, SQL.AsString);
 end;
 
@@ -422,20 +435,10 @@ const
 begin
   SQL
     .Select
-      .All
-      .First(10)
-    .From(DB_TEST);
-end;
-
-procedure TTestGpSQLBuilder.TestSelectFirst2;
-const
-  CExpected = 'SELECT FIRST 10 * FROM Test';
-begin
-  SQL
-    .Select
       .First(10)
       .All
     .From(DB_TEST);
+  Assert.AreEqual(CExpected, SQL.AsString);
 end;
 
 procedure TTestGpSQLBuilder.TestSelectFirstSkip;
@@ -448,6 +451,7 @@ begin
       .Skip(5)
       .All
     .From(DB_TEST);
+  Assert.AreEqual(CExpected, SQL.AsString);
 end;
 
 procedure TTestGpSQLBuilder.TestSelectTwoColumns;
