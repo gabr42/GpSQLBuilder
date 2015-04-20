@@ -51,6 +51,12 @@ type
     function AsString: string;
   end; { IGpSQLSerializer }
 
+var
+  //also used in exception texts in GpSQLBuilder
+  CSectionNames: array [TGpSQLSection] of string = (
+    'SELECT', 'LEFT JOIN', 'WHERE', 'GROUP BY', 'HAVING', 'ORDER BY'
+  );
+
 function CreateSQLSerializer(const ast: IGpSQLBuilderAST): IGpSQLSerializer;
 
 // TODO -oPrimoz Gabrijelcic : temporary solution
@@ -63,12 +69,12 @@ uses
 
 type
   TGpSQLSerializer = class(TInterfacedObject, IGpSQLSerializer)
-  const
-    FSectionNames: array [TGpSQLSection] of string = (
-      'SELECT', 'FROM', 'LEFT JOIN', 'WHERE', 'GROUP BY', 'HAVING', 'ORDER BY'
-    );
   strict private
     FAST: IGpSQLBuilderAST;
+  strict protected
+    function  SerializeColumns(const columns: IGpSQLBuilderColumns): string;
+    function  SerializeName(const name: IGpSQLBuilderName): string;
+    function  SerializeSelect: string;
   public
     constructor Create(const AAST: IGpSQLBuilderAST);
     function AsString: string;
@@ -132,6 +138,8 @@ begin
   Result := TGpSQLSerializer.Create(ast);
 end; { CreateSQLSerializer }
 
+{ TGpSQLSerializer }
+
 constructor TGpSQLSerializer.Create(const AAST: IGpSQLBuilderAST);
 begin
   inherited Create;
@@ -142,14 +150,46 @@ function TGpSQLSerializer.AsString: string;
 var
   sect: TGpSQLSection;
 begin
-  Result := '';
-  for sect := Low(TGpSQLSection) to High(TGpSQLSection) do begin
+  Result := SerializeSelect;
+  for sect := secLeftJoin to High(TGpSQLSection) do begin
     if FAST[sect].AsString <> '' then begin
       if Result <> '' then
         Result := Result + ' ';
-      Result := Result + FSectionNames[sect]+ ' ' + FAST[sect].AsString;
+      Result := Result + CSectionNames[sect]+ ' ' + FAST[sect].AsString;
     end;
   end;
 end; { TGpSQLSerializer.AsString }
+
+function TGpSQLSerializer.SerializeColumns(const columns: IGpSQLBuilderColumns): string;
+var
+  i: integer;
+begin
+  Result := '';
+  for i := 0 to columns.Count - 1 do begin
+    if Result <> '' then
+      Result := Result + ', ';
+    Result := Result + SerializeName(columns[i]);
+  end;
+end; { TGpSQLSerializer.SerializeColumns }
+
+function TGpSQLSerializer.SerializeName(const name: IGpSQLBuilderName): string;
+begin
+  Result := name.Name;
+  if name.Alias <> '' then
+    Result := Result + ' AS ' + name.Alias;
+end; { TGpSQLSerializer.SerializeName }
+
+function TGpSQLSerializer.SerializeSelect: string;
+var
+  columns: IGpSQLBuilderColumns;
+  select : IGpSQLBuilderSelect;
+begin
+  columns := FAST[secSelect] as IGpSQLBuilderColumns;
+  select := FAST[secSelect] as IGpSQLBuilderSelect;
+  if (select.TableName.Name = '') and (columns.Count = 0) then
+    Result := ''
+  else
+    Result := 'SELECT ' + SerializeColumns(columns) + ' FROM ' + SerializeName(select.TableName);
+end; { TGpSQLSerializer.SerializeSelect }
 
 end.
