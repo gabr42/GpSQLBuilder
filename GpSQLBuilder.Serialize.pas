@@ -47,9 +47,10 @@ uses
   GpSQLBuilder.AST;
 
 type
-  IGpSQLSerializer = interface ['{E6355E23-1D91-4536-A693-E1E33B0E2707}']
+  IGpSQLASTSerializer = interface
+  ['{E6355E23-1D91-4536-A693-E1E33B0E2707}']
     function AsString: string;
-  end; { IGpSQLSerializer }
+  end; { IGpSQLASTSerializer }
 
 var
   //also used in exception texts in GpSQLBuilder
@@ -57,7 +58,7 @@ var
     'SELECT', 'LEFT JOIN', 'WHERE', 'GROUP BY', 'HAVING', 'ORDER BY'
   );
 
-function CreateSQLSerializer(const ast: IGpSQLBuilderAST): IGpSQLSerializer;
+function CreateSQLSerializer(const ast: IGpSQLAST): IGpSQLASTSerializer;
 
 // TODO -oPrimoz Gabrijelcic : temporary solution
 function SqlParamsToStr(const params: array of const): string;
@@ -68,15 +69,18 @@ uses
   System.SysUtils;
 
 type
-  TGpSQLSerializer = class(TInterfacedObject, IGpSQLSerializer)
+  TGpSQLSerializer = class(TInterfacedObject, IGpSQLASTSerializer)
   strict private
-    FAST: IGpSQLBuilderAST;
+    FAST: IGpSQLAST;
   strict protected
-    function  SerializeColumns(const columns: IGpSQLBuilderColumns): string;
-    function  SerializeName(const name: IGpSQLBuilderName): string;
+    function  AddToList(const aList, delim, newElement: string): string;
+    function  Concatenate(const elements: array of string): string;
+    function  SerializeColumns(const columns: IGpSQLColumns): string;
+    function  SerializeName(const name: IGpSQLName): string;
     function  SerializeSelect: string;
+    function  SerializeSelectQualifiers(const qualifiers: IGpSQLSelectQualifiers): string;
   public
-    constructor Create(const AAST: IGpSQLBuilderAST);
+    constructor Create(const AAST: IGpSQLAST);
     function AsString: string;
   end; { TGpSQLSerializer }
 
@@ -133,18 +137,36 @@ begin
   end;
 end; { SqlParamsToStr }
 
-function CreateSQLSerializer(const ast: IGpSQLBuilderAST): IGpSQLSerializer;
+function CreateSQLSerializer(const ast: IGpSQLAST): IGpSQLASTSerializer;
 begin
   Result := TGpSQLSerializer.Create(ast);
 end; { CreateSQLSerializer }
 
 { TGpSQLSerializer }
 
-constructor TGpSQLSerializer.Create(const AAST: IGpSQLBuilderAST);
+function TGpSQLSerializer.Concatenate(const elements: array of string): string;
+var
+  s: string;
+begin
+  Result := '';
+  for s in elements do
+    if s <> '' then
+      Result := AddToList(Result, ' ', s);
+end; { TGpSQLSerializer.Concatenate }
+
+constructor TGpSQLSerializer.Create(const AAST: IGpSQLAST);
 begin
   inherited Create;
   FAST := AAST;
 end; { TGpSQLSerializer.Create }
+
+function TGpSQLSerializer.AddToList(const aList, delim, newElement: string): string;
+begin
+  Result := aList;
+  if Result <> '' then
+    Result := Result + delim;
+  Result := Result + newElement;
+end; { TGpSQLSerializer.AddToList }
 
 function TGpSQLSerializer.AsString: string;
 var
@@ -160,7 +182,7 @@ begin
   end;
 end; { TGpSQLSerializer.AsString }
 
-function TGpSQLSerializer.SerializeColumns(const columns: IGpSQLBuilderColumns): string;
+function TGpSQLSerializer.SerializeColumns(const columns: IGpSQLColumns): string;
 var
   i: integer;
 begin
@@ -172,7 +194,7 @@ begin
   end;
 end; { TGpSQLSerializer.SerializeColumns }
 
-function TGpSQLSerializer.SerializeName(const name: IGpSQLBuilderName): string;
+function TGpSQLSerializer.SerializeName(const name: IGpSQLName): string;
 begin
   Result := name.Name;
   if name.Alias <> '' then
@@ -181,15 +203,30 @@ end; { TGpSQLSerializer.SerializeName }
 
 function TGpSQLSerializer.SerializeSelect: string;
 var
-  columns: IGpSQLBuilderColumns;
-  select : IGpSQLBuilderSelect;
+  columns: IGpSQLColumns;
+  select : IGpSQLSelect;
 begin
-  columns := FAST[secSelect] as IGpSQLBuilderColumns;
-  select := FAST[secSelect] as IGpSQLBuilderSelect;
+  columns := FAST[secSelect] as IGpSQLColumns;
+  select := FAST[secSelect] as IGpSQLSelect;
   if (select.TableName.Name = '') and (columns.Count = 0) then
     Result := ''
   else
-    Result := 'SELECT ' + SerializeColumns(columns) + ' FROM ' + SerializeName(select.TableName);
+    Result := Concatenate(['SELECT', SerializeSelectQualifiers(select.Qualifiers),
+      SerializeColumns(columns), 'FROM', SerializeName(select.TableName)]);
 end; { TGpSQLSerializer.SerializeSelect }
+
+function TGpSQLSerializer.SerializeSelectQualifiers(
+  const qualifiers: IGpSQLSelectQualifiers): string;
+var
+  i: integer;
+begin
+  Result := '';
+  for i := 0 to qualifiers.Count - 1 do
+    case qualifiers[i].Qualifier of
+      sqFirst: Result := AddToList(Result, ' ', Concatenate(['FIRST', IntToStr(qualifiers[i].Value)]));
+      sqSkip:  Result := AddToList(Result, ' ', Concatenate(['SKIP', IntToStr(qualifiers[i].Value)]));
+      else raise Exception.Create('TGpSQLSerializer.SerializeSelectQualifiers: Unknown qualifier');
+    end;
+end; { TGpSQLSerializer.SerializeSelectQualifiers }
 
 end.

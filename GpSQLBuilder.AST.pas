@@ -46,9 +46,11 @@ uses
 type
   TGpSQLSection = (secSelect, secLeftJoin, secWhere, secGroupBy, secHaving, secOrderBy);
   TGpSQLSections = set of TGpSQLSection;
-  TGpSQLStringType = (stNormal, stAnd, stOr, stList, stAppend);
 
-  IGpSQLBuilderName = interface ['{B219D388-7E5E-4F71-A1F1-9AE4DDE754BC}']
+  TGpSQLStringType = (stNormal, stAnd, stOr, stList, stAppend); // TODO -oPrimoz Gabrijelcic : should not be necessary in 3.0
+
+  IGpSQLName = interface
+  ['{B219D388-7E5E-4F71-A1F1-9AE4DDE754BC}']
     function  GetAlias: string;
     function  GetName: string;
     procedure SetAlias(const value: string);
@@ -56,17 +58,19 @@ type
   //
     property Name: string read GetName write SetName;
     property Alias: string read GetAlias write SetAlias;
-  end; { IGpSQLBuilderName }
+  end; { IGpSQLName }
 
-  IGpSQLBuilderColumns = interface ['{DA9157F6-3526-4DA4-8CD3-115DFE7719B3}']
-    function  GetColumns(idx: integer): IGpSQLBuilderName;
+  IGpSQLColumns = interface
+  ['{DA9157F6-3526-4DA4-8CD3-115DFE7719B3}']
+    function  GetColumns(idx: integer): IGpSQLName;
   //
     procedure Add(const name: string);
     function  Count: integer;
-    property Columns[idx: integer]: IGpSQLBuilderName read GetColumns; default;
-  end; { IGpSQLBuilderColumns }
+    property Columns[idx: integer]: IGpSQLName read GetColumns; default;
+  end; { IGpSQLColumns }
 
-  IGpSQLBuilderSection = interface ['{BE0A0FF9-AD70-40C5-A1C2-7FA2F7061153}']
+  IGpSQLSection = interface
+  ['{BE0A0FF9-AD70-40C5-A1C2-7FA2F7061153}']
     function  GetAsString: string;
     function  GetSection: TGpSQLSection;
   //
@@ -77,25 +81,49 @@ type
     procedure Clear;
     property AsString: string read GetAsString;
     property Section: TGpSQLSection read GetSection;
-  end; { IGpSQLBuilderSection }
+  end; { IGpSQLSection }
 
-  IGpSQLBuilderSelect = interface(IGpSQLBuilderSection) ['{6B23B86E-97F3-4D8A-BED5-A678EAEF7842}']
-    function  GetTableName: IGpSQLBuilderName;
-    procedure SetTableName(const value: IGpSQLBuilderName);
+  TGpSQLSelectQualifierType = (sqFirst, sqSkip);
+
+  IGpSQLSelectQualifier = interface ['{EC0EC192-81C6-493B-B4A7-F8DA7F6D0D4B}']
+    function  GetQualifier: TGpSQLSelectQualifierType;
+    function  GetValue: integer;
+    procedure SetQualifier(const value: TGpSQLSelectQualifierType);
+    procedure SetValue(const value: integer);
   //
-    property TableName: IGpSQLBuilderName read GetTableName write SetTableName;
-  end; { IGpSQLBuilderSelect }
+    property Qualifier: TGpSQLSelectQualifierType read GetQualifier write SetQualifier;
+    property Value: integer read GetValue write SetValue;
+  end; { IGpSQLSelectQualifier }
 
-  IGpSQLBuilderAST = interface
-    function GetSection(sect: TGpSQLSection): IGpSQLBuilderSection;
+  IGpSQLSelectQualifiers = interface ['{522F34BC-C916-45B6-9DC2-E800FEC7661A}']
+    function GetQualifier(idx: integer): IGpSQLSelectQualifier;
   //
-    property Section[sect: TGpSQLSection]: IGpSQLBuilderSection read GetSection; default;
-  end; { IGpSQLBuilderAST }
+    procedure Add(qualifier: IGpSQLSelectQualifier);
+    function Count: integer;
+    property Qualifier[idx: integer]: IGpSQLSelectQualifier read GetQualifier; default;
+  end; { IGpSQLSelectQualifiers }
 
-  function CreateSQLAST: IGpSQLBuilderAST;
+  IGpSQLSelect = interface(IGpSQLSection) ['{6B23B86E-97F3-4D8A-BED5-A678EAEF7842}']
+    function  GetQualifiers: IGpSQLSelectQualifiers;
+    function  GetTableName: IGpSQLName;
+    procedure SetTableName(const value: IGpSQLName);
+  //
+    property Qualifiers: IGpSQLSelectQualifiers read GetQualifiers;
+    property TableName: IGpSQLName read GetTableName write SetTableName;
+  end; { IGpSQLSelect }
 
-  // TODO -oPrimoz Gabrijelcic : maybe could be removed at the end?
-  function CreateSQLSection(section: TGpSQLSection): IGpSQLBuilderSection;
+  IGpSQLAST = interface
+    function GetSection(sect: TGpSQLSection): IGpSQLSection;
+  //
+    property Section[sect: TGpSQLSection]: IGpSQLSection read GetSection; default;
+  end; { IGpSQLAST }
+
+  function CreateSQLName: IGpSQLName;
+  function CreateSQLColumns: IGpSQLColumns;
+  function CreateSQLSection(section: TGpSQLSection): IGpSQLSection;
+  function CreateSQLSelectQualifier: IGpSQLSelectQualifier;
+  function CreateSQLSelectQualifiers: IGpSQLSelectQualifiers;
+  function CreateSQLAST: IGpSQLAST;
 
 implementation
 
@@ -105,7 +133,7 @@ uses
   GpSQLBuilder.Serialize; // TODO -oPrimoz Gabrijelcic : Temporary, AST must not depend on serialization
 
 type
-  TGpSQLBuilderName = class(TInterfacedObject, IGpSQLBuilderName)
+  TGpSQLName = class(TInterfacedObject, IGpSQLName)
   strict private
     FAlias: string;
     FName : string;
@@ -117,22 +145,22 @@ type
   public
     property Name: string read GetName write SetName;
     property Alias: string read GetAlias write SetAlias;
-  end; { TIGpSQLBuilderName }
+  end; { TGpSQLName }
 
-  TGpSQLBuilderColumns = class(TInterfacedObject, IGpSQLBuilderColumns)
+  TGpSQLColumns = class(TInterfacedObject, IGpSQLColumns)
   strict private
-    FColumns: TList<IGpSQLBuilderName>;
+    FColumns: TList<IGpSQLName>;
   strict protected
-    function  GetColumns(idx: integer): IGpSQLBuilderName;
+    function  GetColumns(idx: integer): IGpSQLName;
   public
     constructor Create;
     destructor  Destroy; override;
     procedure Add(const name: string);
     function  Count: integer;
-    property Columns[idx: integer]: IGpSQLBuilderName read GetColumns; default;
-  end; { TGpSQLBuilderColumns }
+    property Columns[idx: integer]: IGpSQLName read GetColumns; default;
+  end; { TGpSQLColumns }
 
-  TGpSQLBuilderSection = class(TInterfacedObject, IGpSQLBuilderSection)
+  TGpSQLBaseSection = class(TInterfacedObject, IGpSQLSection)
   strict private
     FAsString        : string;
     FInsertedParen   : boolean;
@@ -152,115 +180,168 @@ type
     procedure Clear;
     property AsString: string read GetAsString;
     property Section: TGpSQLSection read GetSection;
-  end; { TGpSQLBuilderSection }
+  end; { TGpSQLBaseSection }
 
-  TGpSQLBuilderSelect = class(TGpSQLBuilderSection, IGpSQLBuilderSelect, IGpSQLBuilderColumns)
+  TGpSQLSelectQualifier = class(TInterfacedObject, IGpSQLSelectQualifier)
   strict private
-    FColumns  : IGpSQLBuilderColumns;
-    FTableName: IGpSQLBuilderName;
+    FQualifier: TGpSQLSelectQualifierType;
+    FValue    : integer;
   strict protected
-    function  GetColumns: IGpSQLBuilderColumns;
-    function  GetTableName: IGpSQLBuilderName;
-    procedure SetTableName(const value: IGpSQLBuilderName);
+    function  GetQualifier: TGpSQLSelectQualifierType;
+    function  GetValue: integer;
+    procedure SetQualifier(const value: TGpSQLSelectQualifierType);
+    procedure SetValue(const value: integer);
+  public
+    property Qualifier: TGpSQLSelectQualifierType read GetQualifier write SetQualifier;
+    property Value: integer read GetValue write SetValue;
+  end; { TGpSQLSelectQualifier }
+
+  TGpSQLSelectQualifiers = class(TInterfacedObject, IGpSQLSelectQualifiers)
+  strict private
+    FQualifiers: TList<IGpSQLSelectQualifier>;
+  strict protected
+    function  GetQualifier(idx: integer): IGpSQLSelectQualifier;
   public
     constructor Create;
-    property Columns: IGpSQLBuilderColumns read FColumns implements IGpSQLBuilderColumns;
-    property TableName: IGpSQLBuilderName read GetTableName write SetTableName;
-  end; { IGpSQLBuilderSelect }
+    destructor  Destroy; override;
+    procedure Add(qualifier: IGpSQLSelectQualifier);
+    function  Count: integer;
+    property Qualifier[idx: integer]: IGpSQLSelectQualifier read GetQualifier; default;
+  end; { TGpSQLSelectQualifiers }
 
-  TGpSQLBuilderAST = class(TInterfacedObject, IGpSQLBuilderAST)
+  TGpSQLSelect = class(TGpSQLBaseSection, IGpSQLSelect, IGpSQLColumns)
   strict private
-    FSections: array [TGpSQLSection] of IGpSQLBuilderSection;
+    FColumns   : IGpSQLColumns;
+    FQualifiers: IGpSQLSelectQualifiers;
+    FTableName : IGpSQLName;
   strict protected
-    function  GetSection(sect: TGpSQLSection): IGpSQLBuilderSection; inline;
+    function  GetColumns: IGpSQLColumns;
+    function  GetQualifiers: IGpSQLSelectQualifiers;
+    function  GetTableName: IGpSQLName;
+    procedure SetTableName(const value: IGpSQLName);
   public
     constructor Create;
-    property Section[sect: TGpSQLSection]: IGpSQLBuilderSection read GetSection; default;
-  end; { TGpSQLBuilderAST }
+    property Columns: IGpSQLColumns read FColumns implements IGpSQLColumns;
+    property Qualifiers: IGpSQLSelectQualifiers read GetQualifiers;
+    property TableName: IGpSQLName read GetTableName write SetTableName;
+  end; { IGpSQLSelect }
+
+  TGpSQLAST = class(TInterfacedObject, IGpSQLAST)
+  strict private
+    FSections: array [TGpSQLSection] of IGpSQLSection;
+  strict protected
+    function  GetSection(sect: TGpSQLSection): IGpSQLSection; inline;
+  public
+    constructor Create;
+    property Section[sect: TGpSQLSection]: IGpSQLSection read GetSection; default;
+  end; { TGpSQLAST }
 
 { exports }
 
-function CreateSQLAST: IGpSQLBuilderAST;
+function CreateSQLName: IGpSQLName;
 begin
-  Result := TGpSQLBuilderAST.Create;
-end; { CreateSQLAST }
+  Result := TGpSQLName.Create;
+end; { CreateSQLName }
 
-function CreateSQLSection(section: TGpSQLSection): IGpSQLBuilderSection;
+function CreateSQLColumns: IGpSQLColumns;
 begin
-  Result := TGpSQLBuilderSection.Create(section);
+  Result := TGpSQLColumns.Create;
+end; { CreateSQLColumns }
+
+function CreateSQLSection(section: TGpSQLSection): IGpSQLSection;
+begin
+  case section of
+    secSelect:   Result := TGpSQLSelect.Create;
+    else         Result := TGpSQLBaseSection.Create(section);
+  end;
 end; { CreateSection }
 
-{ TGpSQLBuilderName }
+function CreateSQLSelectQualifier: IGpSQLSelectQualifier;
+begin
+  Result := TGpSQLSelectQualifier.Create;
+end; { CreateSQLSelectQualifier }
 
-function TGpSQLBuilderName.GetAlias: string;
+function CreateSQLSelectQualifiers: IGpSQLSelectQualifiers;
+begin
+  Result := TGpSQLSelectQualifiers.Create;
+end; { CreateSQLSelectQualifiers }
+
+function CreateSQLAST: IGpSQLAST;
+begin
+  Result := TGpSQLAST.Create;
+end; { CreateSQLAST }
+
+{ TGpSQLName }
+
+function TGpSQLName.GetAlias: string;
 begin
   Result := FAlias;
-end; { TGpSQLBuilderName.GetAlias }
+end; { TGpSQLName.GetAlias }
 
-function TGpSQLBuilderName.GetName: string;
+function TGpSQLName.GetName: string;
 begin
   Result := FName;
-end; { TGpSQLBuilderName.GetName }
+end; { TGpSQLName.GetName }
 
-procedure TGpSQLBuilderName.SetAlias(const value: string);
+procedure TGpSQLName.SetAlias(const value: string);
 begin
   FAlias := value;
-end; { TGpSQLBuilderName.SetAlias }
+end; { TGpSQLName.SetAlias }
 
-procedure TGpSQLBuilderName.SetName(const value: string);
+procedure TGpSQLName.SetName(const value: string);
 begin
   FName := value;
-end; { TGpSQLBuilderName.SetName }
+end; { TGpSQLName.SetName }
 
-{ TGpSQLBuilderColumns }
+{ TGpSQLColumns }
 
-constructor TGpSQLBuilderColumns.Create;
+constructor TGpSQLColumns.Create;
 begin
   inherited Create;
-  FColumns := TList<IGpSQLBuilderName>.Create;
-end; { TGpSQLBuilderColumns.Create }
+  FColumns := TList<IGpSQLName>.Create;
+end; { TGpSQLColumns.Create }
 
-destructor TGpSQLBuilderColumns.Destroy;
+destructor TGpSQLColumns.Destroy;
 begin
   FreeAndNil(FColumns);
   inherited;
-end; { TGpSQLBuilderColumns.Destroy }
+end; { TGpSQLColumns.Destroy }
 
-procedure TGpSQLBuilderColumns.Add(const name: string);
+procedure TGpSQLColumns.Add(const name: string);
 var
-  column: TGpSQLBuilderName;
+  column: IGpSQLName;
 begin
-  column := TGpSQLBuilderName.Create;
+  column := CreateSQLName;
   column.Name := name;
   FColumns.Add(column);
-end; { TGpSQLBuilderColumns.Add }
+end; { TGpSQLColumns.Add }
 
-function TGpSQLBuilderColumns.Count: integer;
+function TGpSQLColumns.Count: integer;
 begin
   Result := FColumns.Count;
-end; { TGpSQLBuilderColumns.Count }
+end; { TGpSQLColumns.Count }
 
-function TGpSQLBuilderColumns.GetColumns(idx: integer): IGpSQLBuilderName;
+function TGpSQLColumns.GetColumns(idx: integer): IGpSQLName;
 begin
   Result := FColumns[idx];
-end; { TGpSQLBuilderColumns.GetColumns }
+end; { TGpSQLColumns.GetColumns }
 
-{ TGpSQLBuilderSection }
+{ TGpSQLBaseSection }
 
-constructor TGpSQLBuilderSection.Create(section: TGpSQLSection);
+constructor TGpSQLBaseSection.Create(section: TGpSQLSection);
 begin
   inherited Create;
   FSection := section;
-end; { TGpSQLBuilderSection.Create }
+end; { TGpSQLBaseSection.Create }
 
-procedure TGpSQLBuilderSection.Add(const params: array of const; paramType: TGpSQLStringType;
+procedure TGpSQLBaseSection.Add(const params: array of const; paramType: TGpSQLStringType;
   const pushBefore: string);
 var
   sParams: string;
 begin
   if paramType = stOr then begin
     if not FIsAndExpr then
-      raise Exception.Create('TGpSQLBuilderSection: OrE without preceding AndE');
+      raise Exception.Create('TGpSQLBaseSection: OrE without preceding AndE');
     if not FInsertedParen then begin
       Insert('(', FAsString, FLastAndInsertion);
       FInsertedParen := true;
@@ -289,70 +370,126 @@ begin
     FIsAndExpr := (paramType = stAnd);
     FIsList := (paramType = stList);
   end;
-end; { TGpSQLBuilderSection.Add }
+end; { TGpSQLBaseSection.Add }
 
-procedure TGpSQLBuilderSection.Add(const params: string; paramType: TGpSQLStringType;
+procedure TGpSQLBaseSection.Add(const params: string; paramType: TGpSQLStringType;
   const pushBefore: string);
 begin
   Add([params], paramType, pushBefore);
-end; { TGpSQLBuilderSection.Add }
+end; { TGpSQLBaseSection.Add }
 
-procedure TGpSQLBuilderSection.Clear;
+procedure TGpSQLBaseSection.Clear;
 begin
   FAsString := '';
   FIsAndExpr := false;
   FIsList := false;
-end; { TGpSQLBuilderSection.Clear }
+end; { TGpSQLBaseSection.Clear }
 
-function TGpSQLBuilderSection.GetAsString: string;
+function TGpSQLBaseSection.GetAsString: string;
 begin
   Result := FAsString;
-end; { TGpSQLBuilderSection.GetAsString }
+end; { TGpSQLBaseSection.GetAsString }
 
-function TGpSQLBuilderSection.GetSection: TGpSQLSection;
+function TGpSQLBaseSection.GetSection: TGpSQLSection;
 begin
   Result := FSection;
-end; { TGpSQLBuilderSection.GetSection }
+end; { TGpSQLBaseSection.GetSection }
 
-{ TGpSQLBuilderSelect }
+{ TGpSQLSelectQualifier }
 
-constructor TGpSQLBuilderSelect.Create;
+function TGpSQLSelectQualifier.GetQualifier: TGpSQLSelectQualifierType;
+begin
+  Result := FQualifier;
+end; { TGpSQLSelectQualifier.GetQualifier }
+
+function TGpSQLSelectQualifier.GetValue: integer;
+begin
+  Result := FValue;
+end; { TGpSQLSelectQualifier.GetValue }
+
+procedure TGpSQLSelectQualifier.SetQualifier(const value: TGpSQLSelectQualifierType);
+begin
+  FQualifier := value;
+end; { TGpSQLSelectQualifier.SetQualifier }
+
+procedure TGpSQLSelectQualifier.SetValue(const value: integer);
+begin
+  FValue := value;
+end; { TGpSQLSelectQualifier.SetValue }
+
+{ TGpSQLSelectQualifiers }
+
+constructor TGpSQLSelectQualifiers.Create;
+begin
+  inherited Create;
+  FQualifiers := TList<IGpSQLSelectQualifier>.Create;
+end; { TGpSQLSelectQualifiers.Create }
+
+destructor TGpSQLSelectQualifiers.Destroy;
+begin
+  FreeAndNil(FQualifiers);
+  inherited;
+end; { TGpSQLSelectQualifiers.Destroy }
+
+procedure TGpSQLSelectQualifiers.Add(qualifier: IGpSQLSelectQualifier);
+begin
+  FQualifiers.Add(qualifier);
+end; { TGpSQLSelectQualifiers.Add }
+
+function TGpSQLSelectQualifiers.Count: integer;
+begin
+  Result := FQualifiers.Count;
+end; { TGpSQLSelectQualifiers.Count }
+
+function TGpSQLSelectQualifiers.GetQualifier(idx: integer): IGpSQLSelectQualifier;
+begin
+  Result := FQualifiers[idx];
+end; { TGpSQLSelectQualifiers.GetQualifier }
+
+{ TGpSQLSelect }
+
+constructor TGpSQLSelect.Create;
 begin
   inherited Create(secSelect);
-  FColumns := TGpSQLBuilderColumns.Create;
-  FTableName := TGpSQLBuilderName.Create;
-end; { TGpSQLBuilderSelect.Create }
+  FColumns := CreateSQLColumns;
+  FQualifiers := CreateSQLSelectQualifiers;
+  FTableName := CreateSQLName;
+end; { TGpSQLSelect.Create }
 
-function TGpSQLBuilderSelect.GetColumns: IGpSQLBuilderColumns;
+function TGpSQLSelect.GetColumns: IGpSQLColumns;
 begin
   Result := FColumns;
-end; { TGpSQLBuilderSelect.GetColumns }
+end; { TGpSQLSelect.GetColumns }
 
-function TGpSQLBuilderSelect.GetTableName: IGpSQLBuilderName;
+function TGpSQLSelect.GetQualifiers: IGpSQLSelectQualifiers;
+begin
+  Result := FQualifiers;
+end; { TGpSQLSelect.GetQualifiers }
+
+function TGpSQLSelect.GetTableName: IGpSQLName;
 begin
   Result := FTableName;
-end; { TGpSQLBuilderSelect.GetTableName }
+end; { TGpSQLSelect.GetTableName }
 
-procedure TGpSQLBuilderSelect.SetTableName(const value: IGpSQLBuilderName);
+procedure TGpSQLSelect.SetTableName(const value: IGpSQLName);
 begin
   FTableName := value;
-end; { TGpSQLBuilderSelect.SetTableName }
+end; { TGpSQLSelect.SetTableName }
 
-{ TGpSQLBuilderAST }
+{ TGpSQLAST }
 
-constructor TGpSQLBuilderAST.Create;
+constructor TGpSQLAST.Create;
 var
   section: TGpSQLSection;
 begin
   inherited;
-  FSections[secSelect] := TGpSQLBuilderSelect.Create;
-  for section := secLeftJoin to High(TGpSQLSection) do
-    FSections[section] := TGpSQLBuilderSection.Create(section);
-end; { TGpSQLBuilderAST.Create }
+  for section := Low(TGpSQLSection) to High(TGpSQLSection) do
+    FSections[section] := CreateSQLSection(section);
+end; { TGpSQLAST.Create }
 
-function TGpSQLBuilderAST.GetSection(sect: TGpSQLSection): IGpSQLBuilderSection;
+function TGpSQLAST.GetSection(sect: TGpSQLSection): IGpSQLSection;
 begin
   Result := FSections[sect];
-end; { TGpSQLBuilderAST.GetSection }
+end; { TGpSQLAST.GetSection }
 
 end.
