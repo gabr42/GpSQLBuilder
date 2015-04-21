@@ -568,7 +568,8 @@ end; { TGpSQLBuilder.Column }
 
 function TGpSQLBuilder.Desc: IGpSQLBuilder;
 begin
-  FActiveSection.Add('DESC', stAppend);
+// TODO -oPrimoz Gabrijelcic :
+//  FActiveSection.Add('DESC', stAppend);
   Result := Self;
 end; { TGpSQLBuilder.Desc }
 
@@ -590,16 +591,14 @@ begin
   qual := CreateSQLSelectQualifier;
   qual.Qualifier := sqFirst;
   qual.Value := num;
-  (FActiveSection as IGpSQLSelect).Qualifiers.Add(qual);
+  (FASTSection as IGpSQLSelect).Qualifiers.Add(qual);
   Result := Self;
 end; { TGpSQLBuilder.First }
 
 function TGpSQLBuilder.From(const dbName: string): IGpSQLBuilder;
 begin
   AssertSection([secSelect]);
-  FLastPart := partFrom;
-  FActiveSection := AST[secSelect];
-  (FActiveSection as IGpSQLSelect).TableName.Name := dbName;
+  (FASTSection as IGpSQLSelect).TableName.Name := dbName;
   Result := Self;
 end; { TGpSQLBuilder.From }
 
@@ -633,7 +632,8 @@ end; { TGpSQLBuilder.Having }
 
 function TGpSQLBuilder.IsEmpty: boolean;
 begin
-  Result := (FActiveSection.AsString = '');
+// TODO -oPrimoz Gabrijelcic : implement: TGpSQLBuilder.IsEmpty
+//  Result := FASTSection.IsEmpty;
 end; { TGpSQLBuilder.IsEmpty }
 
 function TGpSQLBuilder.LeftJoin(const dbName: string): IGpSQLBuilder;
@@ -641,11 +641,12 @@ var
   join: IGpSQLJoin;
 begin
   FActiveSection := secJoin;
-  FASTSection := FAST.Joins.Add;
-  join := (FASTSection as IGpSQLJoin);
+  join := CreateSQLJoin;
   join.JoinType := jtLeft;
   FASTName := join.JoinedTable;
   FASTName.Name := dbName;
+  FAST.Joins.Add(join);
+  FASTSection := join;
   Result := Self;
 end; { TGpSQLBuilder.LeftJoin }
 
@@ -675,7 +676,8 @@ end; { TGpSQLBuilder.&Or }
 
 function TGpSQLBuilder.&Or(const expression: string): IGpSQLBuilder;
 begin
-  FActiveSection.Add(['(', expression, ')'], stOr);
+  // TODO -oPrimoz Gabrijelcic : implement: TGpSQLBuilder
+//  FActiveSection.Add(['(', expression, ')'], stOr);
   Result := Self;
 end; { TGpSQLBuilder.&Or }
 
@@ -719,7 +721,7 @@ begin
   qual := CreateSQLSelectQualifier;
   qual.Qualifier := sqSkip;
   qual.Value := num;
-  (FActiveSection as IGpSQLSelect).Qualifiers.Add(qual);
+  (FASTSection as IGpSQLSelect).Qualifiers.Add(qual);
   Result := Self;
 end; { TGpSQLBuilder.Skip }
 

@@ -120,6 +120,7 @@ type
   end; { IGpSQLJoin }
 
   IGpSQLJoins = interface ['{5C277003-FC57-4DE5-B041-371012A51D82}']
+    procedure Add(const join: IGpSQLJoin);
   end; { IGpSQLJoins }
 
   IGpSQLWhere = interface(IGpSQLSection) ['{77BD3E41-53DC-4FC7-B0ED-B339564791AA}']
@@ -170,6 +171,8 @@ type
   function CreateSQLColumns: IGpSQLColumns;
   function CreateSQLSelectQualifier: IGpSQLSelectQualifier;
   function CreateSQLSelectQualifiers: IGpSQLSelectQualifiers;
+  // TODO -oPrimoz Gabrijelcic : add constructors for other sections
+  function CreateSQLJoin: IGpSQLJoin;
   function CreateSQLAST: IGpSQLAST;
 
 implementation
@@ -281,6 +284,12 @@ type
   end; { TGpSQLJoin }
 
   TGpSQLJoins = class(TInterfacedObject, IGpSQLJoins)
+  strict private
+    FJoins: TList<IGpSQLJoin>;
+  public
+    constructor Create;
+    destructor  Destroy; override;
+    procedure Add(const join: IGpSQLJoin);
   end; { TGpSQLJoins }
 
   TGpSQLWhere = class(TGpSQLSection, IGpSQLWhere)
@@ -373,6 +382,11 @@ function CreateSQLSelectQualifiers: IGpSQLSelectQualifiers;
 begin
   Result := TGpSQLSelectQualifiers.Create;
 end; { CreateSQLSelectQualifiers }
+
+function CreateSQLJoin: IGpSQLJoin;
+begin
+  Result := TGpSQLJoin.Create;
+end; { CreateSQLJoin }
 
 function CreateSQLAST: IGpSQLAST;
 begin
@@ -560,6 +574,25 @@ procedure TGpSQLJoin.SetJoinType(const value: TGpSQLJoinType);
 begin
   FJoinType := value;
 end; { TGpSQLJoin.SetJoinType }
+
+{ TGpSQLJoins }
+
+constructor TGpSQLJoins.Create;
+begin
+  inherited Create;
+  FJoins := TList<IGpSQLJoin>.Create;
+end; { TGpSQLJoins.Create }
+
+destructor TGpSQLJoins.Destroy;
+begin
+  FreeAndNil(FJoins);
+  inherited;
+end; { TGpSQLJoins.Destroy }
+
+procedure TGpSQLJoins.Add(const join: IGpSQLJoin);
+begin
+  FJoins.Add(join);
+end; { TGpSQLJoins.Add }
 
 { TGpSQLWhere }
 
