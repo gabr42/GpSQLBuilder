@@ -52,12 +52,6 @@ type
     function AsString: string;
   end; { IGpSQLASTSerializer }
 
-var
-  //also used in exception texts in GpSQLBuilder
-  CSectionNames: array [TGpSQLSection] of string = (
-    'SELECT', 'LEFT JOIN', 'WHERE', 'GROUP BY', 'HAVING', 'ORDER BY'
-  );
-
 function CreateSQLSerializer(const ast: IGpSQLAST): IGpSQLASTSerializer;
 
 // TODO -oPrimoz Gabrijelcic : temporary solution
@@ -76,9 +70,14 @@ type
     function  AddToList(const aList, delim, newElement: string): string;
     function  Concatenate(const elements: array of string): string;
     function  SerializeColumns(const columns: IGpSQLColumns): string;
+    function  SerializeGroupBy: string;
+    function  SerializeHaving: string;
+    function  SerializeLeftJoins: string;
     function  SerializeName(const name: IGpSQLName): string;
+    function  SerializeOrderBy: string;
     function  SerializeSelect: string;
     function  SerializeSelectQualifiers(const qualifiers: IGpSQLSelectQualifiers): string;
+    function  SerializeWhere: string;
   public
     constructor Create(const AAST: IGpSQLAST);
     function AsString: string;
@@ -144,16 +143,6 @@ end; { CreateSQLSerializer }
 
 { TGpSQLSerializer }
 
-function TGpSQLSerializer.Concatenate(const elements: array of string): string;
-var
-  s: string;
-begin
-  Result := '';
-  for s in elements do
-    if s <> '' then
-      Result := AddToList(Result, ' ', s);
-end; { TGpSQLSerializer.Concatenate }
-
 constructor TGpSQLSerializer.Create(const AAST: IGpSQLAST);
 begin
   inherited Create;
@@ -169,18 +158,25 @@ begin
 end; { TGpSQLSerializer.AddToList }
 
 function TGpSQLSerializer.AsString: string;
-var
-  sect: TGpSQLSection;
 begin
-  Result := SerializeSelect;
-  for sect := secLeftJoin to High(TGpSQLSection) do begin
-    if FAST[sect].AsString <> '' then begin
-      if Result <> '' then
-        Result := Result + ' ';
-      Result := Result + CSectionNames[sect]+ ' ' + FAST[sect].AsString;
-    end;
-  end;
+  Result := Concatenate([
+    SerializeSelect,
+    SerializeLeftJoins,
+    SerializeWhere,
+    SerializeGroupBy,
+    SerializeHaving,
+    SerializeOrderBy]);
 end; { TGpSQLSerializer.AsString }
+
+function TGpSQLSerializer.Concatenate(const elements: array of string): string;
+var
+  s: string;
+begin
+  Result := '';
+  for s in elements do
+    if s <> '' then
+      Result := AddToList(Result, ' ', s);
+end; { TGpSQLSerializer.Concatenate }
 
 function TGpSQLSerializer.SerializeColumns(const columns: IGpSQLColumns): string;
 var
@@ -194,6 +190,21 @@ begin
   end;
 end; { TGpSQLSerializer.SerializeColumns }
 
+function TGpSQLSerializer.SerializeGroupBy: string;
+begin
+  Result := '';
+end; { TGpSQLSerializer.SerializeGroupBy }
+
+function TGpSQLSerializer.SerializeHaving: string;
+begin
+  Result := '';
+end; { TGpSQLSerializer.SerializeHaving }
+
+function TGpSQLSerializer.SerializeLeftJoins: string;
+begin
+  Result := '';
+end; { TGpSQLSerializer.SerializeLeftJoins }
+
 function TGpSQLSerializer.SerializeName(const name: IGpSQLName): string;
 begin
   Result := name.Name;
@@ -201,13 +212,18 @@ begin
     Result := Result + ' AS ' + name.Alias;
 end; { TGpSQLSerializer.SerializeName }
 
+function TGpSQLSerializer.SerializeOrderBy: string;
+begin
+  Result := '';
+end; { TGpSQLSerializer.SerializeOrderBy }
+
 function TGpSQLSerializer.SerializeSelect: string;
 var
   columns: IGpSQLColumns;
   select : IGpSQLSelect;
 begin
-  columns := FAST[secSelect] as IGpSQLColumns;
-  select := FAST[secSelect] as IGpSQLSelect;
+  columns := FAST.Select as IGpSQLColumns;
+  select := FAST.Select as IGpSQLSelect;
   if (select.TableName.Name = '') and (columns.Count = 0) then
     Result := ''
   else
@@ -228,5 +244,10 @@ begin
       else raise Exception.Create('TGpSQLSerializer.SerializeSelectQualifiers: Unknown qualifier');
     end;
 end; { TGpSQLSerializer.SerializeSelectQualifiers }
+
+function TGpSQLSerializer.SerializeWhere: string;
+begin
+  Result := '';
+end; { TGpSQLSerializer.SerializeWhere }
 
 end.

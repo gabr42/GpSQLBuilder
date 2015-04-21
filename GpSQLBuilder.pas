@@ -91,6 +91,9 @@ unit GpSQLBuilder;
 
 interface
 
+uses
+  GpSQLBuilder.AST;
+
 type
   IGpSQLBuilder = interface;
 
@@ -126,6 +129,7 @@ type
 
   IGpSQLBuilder = interface ['{43EA3E34-A8DB-4257-A19F-030F404646E7}']
     function GetAsString: string;
+    function GetAST: IGpSQLAST;
   //
     function &And(const expression: array of const): IGpSQLBuilder; overload;
     function &And(const expression: string): IGpSQLBuilder; overload;
@@ -161,6 +165,7 @@ type
     function Expression(const term: array of const): IGpSQLBuilderExpression; overload;
     function IsEmpty: boolean;
     property AsString: string read GetAsString;
+    property AST: IGpSQLAST read GetAST;
   end; { IGpSQLBuilder }
 
 function CreateGpSQLBuilder: IGpSQLBuilder;
@@ -171,12 +176,12 @@ uses
   System.SysUtils,
   System.StrUtils,
   System.Generics.Collections,
-  GpSQLBuilder.AST,
   GpSQLBuilder.Serialize;
 
 type
+  // TODO -oPrimoz Gabrijelcic : do we need it?
   IGpSQLBuilderEx = interface ['{9F70DAA3-0900-4DFD-B967-C56D23513609}']
-    function  ActiveSection: IGpSQLSection;
+//    function  ActiveSection: IGpSQLSection;
   end; { IGpSQLBuilderEx }
 
   TGpSQLBuilderExpression = class(TInterfacedObject, IGpSQLBuilderExpression)
@@ -226,21 +231,22 @@ type
   TGpSQLBuilder = class(TInterfacedObject, IGpSQLBuilder, IGpSQLBuilderEx)
   strict private
   type
-    TGpSQLPart = (partNone, partColumn, partFrom);
-    TGpSQLParts = set of TGpSQLPart;
+    TGpSQLSection = (secSelect, secJoin, secWhere, secGroupBy, secHaving, secOrderBy);
+    TGpSQLSections = set of TGpSQLSection;
   var
-    FActiveSection: IGpSQLSection;
+    FActiveSection: TGpSQLSection;
     FAST          : IGpSQLAST;
-    FLastPart     : TGpSQLPart;
+    FASTSection   : IGpSQLSection;
+    FASTName      : IGpSQLName;
   strict protected
+    procedure AssertHaveName;
     procedure AssertSection(sections: TGpSQLSections);
-    procedure AssertPart(parts: TGpSQLParts);
+//    procedure AssertPart(parts: TGpSQLParts);
     function  GetAsString: string;
-    function  GetSection(sqlSection: TGpSQLSection): IGpSQLSection;
-    property AST: IGpSQLAST read FAST;
+    function  GetAST: IGpSQLAST;
+    procedure SelectSection(section: TGpSQLSection);
   public
     constructor Create;
-    function  ActiveSection: IGpSQLSection;
     function  &And(const expression: array of const): IGpSQLBuilder; overload;
     function  &And(const expression: string): IGpSQLBuilder; overload;
     function  &And(const expression: IGpSQLBuilderExpression): IGpSQLBuilder; overload;
@@ -262,6 +268,7 @@ type
     function  Having(const expression: string = ''): IGpSQLBuilder; overload;
     function  Having(const expression: array of const): IGpSQLBuilder; overload;
     function  IsEmpty: boolean;
+    // TODO -oPrimoz Gabrijelcic : Add other joins
     function  LeftJoin(const dbName: string): IGpSQLBuilder;
     function  &On(const expression: string): IGpSQLBuilder; overload;
     function  &On(const expression: array of const): IGpSQLBuilder; overload;
@@ -274,7 +281,7 @@ type
     function  Where(const expression: string = ''): IGpSQLBuilder; overload;
     function  Where(const expression: array of const): IGpSQLBuilder; overload;
     property AsString: string read GetAsString;
-    property Section[sqlSection: TGpSQLSection]: IGpSQLSection read GetSection; default;
+    property AST: IGpSQLAST read GetAST;
   end; { TGpSQLBuilder }
 
 { exports }
@@ -308,7 +315,8 @@ end; { TGpSQLBuilder.&And }
 
 function TGpSQLBuilderCase.&And(const expression: string): IGpSQLBuilderCase;
 begin
-  FActiveSection.Add(['(', expression, ')'], stAnd);
+  // TODO -oPrimoz Gabrijelcic : implement: TGpSQLBuilderCase
+//  FActiveSection.Add(['(', expression, ')'], stAnd);
   Result := Self;
 end; { TGpSQLBuilder.&And }
 
@@ -332,22 +340,24 @@ end; { TGpSQLBuilderCase }
 
 function TGpSQLBuilderCase.&End: IGpSQLBuilder;
 begin
-  (FSQLBuilder as IGpSQLBuilderEx).ActiveSection.Add(AsString, stList);
+  // TODO -oPrimoz Gabrijelcic : implement: TGpSQLBuilderCase
+//  (FSQLBuilder as IGpSQLBuilderEx).ActiveSection.Add(AsString, stList);
   Result := FSQLBuilder;
 end; { TGpSQLBuilderCase }
 
 function TGpSQLBuilderCase.GetAsString: string;
-var
-  kv: TPair<IGpSQLSection,string>;
+//var
+//  kv: TPair<IGpSQLSection,string>;
 begin
-  Result := 'CASE ';
-  if FCaseExpression <> '' then
-    Result := Result + FCaseExpression + ' ';
-  for kv in FWhenList do
-    Result := Result + 'WHEN ' + kv.Key.AsString + ' THEN ' + kv.Value + ' ';
-  if FHasElse then
-    Result := Result + 'ELSE ' + FElseValue + ' ';
-  Result := Result + 'END';
+  // TODO -oPrimoz Gabrijelcic : Remove
+//  Result := 'CASE ';
+//  if FCaseExpression <> '' then
+//    Result := Result + FCaseExpression + ' ';
+//  for kv in FWhenList do
+//    Result := Result + 'WHEN ' + kv.Key.AsString + ' THEN ' + kv.Value + ' ';
+//  if FHasElse then
+//    Result := Result + 'ELSE ' + FElseValue + ' ';
+//  Result := Result + 'END';
 end; { TGpSQLBuilderCase.GetAsString }
 
 function TGpSQLBuilderCase.&Or(const expression: array of const): IGpSQLBuilderCase;
@@ -357,7 +367,8 @@ end; {  TGpSQLBuilder.&Or}
 
 function TGpSQLBuilderCase.&Or(const expression: string): IGpSQLBuilderCase;
 begin
-  FActiveSection.Add(['(', expression, ')'], stOr);
+  // TODO -oPrimoz Gabrijelcic : implement: TGpSQLBuilderCase
+//  FActiveSection.Add(['(', expression, ')'], stOr);
   Result := Self;
 end; { TGpSQLBuilder.&Or }
 
@@ -393,26 +404,29 @@ end; { TGpSQLBuilderCase.When }
 
 function TGpSQLBuilderCase.When(const condition: string): IGpSQLBuilderCase;
 begin
-  FActiveSection := CreateSQLSection(secSelect); // TODO -oPrimoz Gabrijelcic : stopgap solution
-  FWhenList.Add(TPair<IGpSQLSection,string>.Create(FActiveSection, ''));
-  if condition = '' then
-    Result := Self
-  else
-    Result := &And(condition);
+  // TODO -oPrimoz Gabrijelcic : implement: TGpSQLBuilderCase.When
+//  FActiveSection := CreateSQLSection(secSelect); // TODO -oPrimoz Gabrijelcic : stopgap solution
+//  FWhenList.Add(TPair<IGpSQLSection,string>.Create(FActiveSection, ''));
+//  if condition = '' then
+//    Result := Self
+//  else
+//    Result := &And(condition);
 end; { TGpSQLBuilderCase.When }
 
 { TGpSQLBuilderExpression }
 
 constructor TGpSQLBuilderExpression.Create(const expression: string);
 begin
-  FActiveSection := CreateSQLSection(secSelect); // TODO 1 -oPrimoz Gabrijelcic : stopgap solution
-  if expression <> '' then
-    &And(expression);
+  // TODO -oPrimoz Gabrijelcic : implement: TGpSQLBuilderExpression.Create
+//  FActiveSection := CreateSQLSection(secSelect); // TODO 1 -oPrimoz Gabrijelcic : stopgap solution
+//  if expression <> '' then
+//    &And(expression);
 end; { TGpSQLBuilderExpression.Create }
 
 function TGpSQLBuilderExpression.&And(const expression: string): IGpSQLBuilderExpression;
 begin
-  FActiveSection.Add(['(', expression, ')'], stAnd);
+  // TODO -oPrimoz Gabrijelcic : implement: TGpSQLBuilderExpression
+//  FActiveSection.Add(['(', expression, ')'], stAnd);
   Result := Self;
 end; { TGpSQLBuilderExpression }
 
@@ -424,12 +438,14 @@ end; { TGpSQLBuilderExpression }
 
 function TGpSQLBuilderExpression.GetAsString: string;
 begin
-  Result := FActiveSection.AsString;
+  // TODO -oPrimoz Gabrijelcic : Remove
+//  Result := FActiveSection.AsString;
 end; { TGpSQLBuilderExpression.GetAsString }
 
 function TGpSQLBuilderExpression.&Or(const expression: string): IGpSQLBuilderExpression;
 begin
-  FActiveSection.Add(['(', expression, ')'], stOr);
+  // TODO 1 -oPrimoz Gabrijelcic : implement: TGpSQLBuilderExpression
+//  FActiveSection.Add(['(', expression, ')'], stOr);
   Result := Self;
 end; { TGpSQLBuilderExpression }
 
@@ -458,7 +474,8 @@ end; { TGpSQLBuilder.&And }
 
 function TGpSQLBuilder.&And(const expression: string): IGpSQLBuilder;
 begin
-  FActiveSection.Add(['(', expression, ')'], stAnd);
+  // TODO 1 -oPrimoz Gabrijelcic : implement: TGpSQLBuilder
+//  FActiveSection.Add(['(', expression, ')'], stAnd);
   Result := Self;
 end; { TGpSQLBuilder.&And }
 
@@ -472,37 +489,30 @@ var
   columns   : IGpSQLColumns;
   pushBefore: string;
 begin
-  AssertSection([secSelect, secLeftJoin]);
-  AssertPart([partColumn, partFrom]);
+  AssertSection([secSelect, secJoin]);
+  AssertHaveName;
 
-  if FLastPart = partColumn then begin
-    columns := (FActiveSection as IGpSQLColumns);
-    // TODO -oPrimoz Gabrijelcic : Check if there's at least one element
-    columns[columns.Count - 1].Alias := alias;
-  end
-  else if FActiveSection.Section = secSelect then
-    (FActiveSection as IGpSQLSelect).TableName.Alias := alias
-  else
-    FActiveSection.Add(['AS', alias], stAppend, pushBefore);
+  FASTName.Alias := alias;
   Result := Self;
 end; { TGpSQLBuilder.&As }
 
+procedure TGpSQLBuilder.AssertHaveName;
+begin
+  if not assigned(FASTName) then
+    raise Exception.Create('TGpSQLBuilder: Curernt name is not set');
+end; { TGpSQLBuilder.AssertHaveName }
+
 procedure TGpSQLBuilder.AssertSection(sections: TGpSQLSections);
 begin
-  if not (FActiveSection.Section in sections) then
+  if not (FActiveSection in sections) then
     raise Exception.Create('TGpSQLBuilder: Not supported in this section');
 end; { TGpSQLBuilder.AssertSection }
 
-procedure TGpSQLBuilder.AssertPart(parts: TGpSQLParts);
-begin
-  if not (FLastPart in parts) then
-    raise Exception.Create('TGpSQLBuilder: Not supported in this part');
-end; { TGpSQLBuilder.AssertPart }
-
-function TGpSQLBuilder.ActiveSection: IGpSQLSection;
-begin
-  Result := FActiveSection;
-end; { TGpSQLBuilder.ActiveSection }
+//procedure TGpSQLBuilder.AssertPart(parts: TGpSQLParts);
+//begin
+//  if not (FLastPart in parts) then
+//    raise Exception.Create('TGpSQLBuilder: Not supported in this part');
+//end; { TGpSQLBuilder.AssertPart }
 
 function TGpSQLBuilder.&Case(const expression: string = ''): IGpSQLBuilderCase;
 begin
@@ -516,7 +526,8 @@ end; { TGpSQLBuilder }
 
 function TGpSQLBuilder.Clear: IGpSQLBuilder;
 begin
-  FActiveSection.Clear;
+  // TODO -oPrimoz Gabrijelcic : implement: TGpSQLBuilder.Clear
+//  FActiveSection.Clear;
   Result := Self;
 end; { TGpSQLBuilder.Clear }
 
@@ -524,8 +535,9 @@ function TGpSQLBuilder.ClearAll: IGpSQLBuilder;
 var
   section: TGpSQLSection;
 begin
-  for section := Low(TGpSQLSection) to High(TGpSQLSection) do
-    AST[section].Clear;
+  // TODO -oPrimoz Gabrijelcic : implement: TGpSQLBuilder.ClearAll
+//  for section := Low(TGpSQLSection) to High(TGpSQLSection) do
+//    AST[section].Clear;
   Result := Self;
 end; { TGpSQLBuilder.ClearAll }
 
@@ -533,12 +545,14 @@ function TGpSQLBuilder.Column(const colName: string): IGpSQLBuilder;
 var
   sqlColumns: IGpSQLColumns;
 begin
-  FLastPart := partColumn;
-  if Supports(FActiveSection, IGpSQLColumns, sqlColumns) then
-    sqlColumns.Add(colName)
+  if Supports(FASTSection, IGpSQLColumns, sqlColumns) then begin
+    FASTName := CreateSQLName;
+    FASTName.Name := colName;
+    sqlColumns.Add(FASTName);
+  end
   else
     raise Exception.CreateFmt('Current section [%s] does not support COLUMN.',
-      [CSectionNames[FActiveSection.Section]]);
+      [FASTSection.Name]);
   Result := Self;
 end; { TGpSQLBuilder.Column }
 
@@ -582,6 +596,7 @@ end; { TGpSQLBuilder.First }
 
 function TGpSQLBuilder.From(const dbName: string): IGpSQLBuilder;
 begin
+  AssertSection([secSelect]);
   FLastPart := partFrom;
   FActiveSection := AST[secSelect];
   (FActiveSection as IGpSQLSelect).TableName.Name := dbName;
@@ -593,14 +608,9 @@ begin
   Result := CreateSQLSerializer(AST).AsString;
 end; { TGpSQLBuilder.GetAsString }
 
-function TGpSQLBuilder.GetSection(sqlSection: TGpSQLSection): IGpSQLSection;
-begin
-  Result := AST[sqlSection];
-end; { TGpSQLBuilder.GetSection }
-
 function TGpSQLBuilder.GroupBy(const colName: string): IGpSQLBuilder;
 begin
-  FActiveSection := AST[secGroupBy];
+  SelectSection(secGroupBy);
   if colName = '' then
     Result := Self
   else
@@ -609,7 +619,7 @@ end; { TGpSQLBuilder.GroupBy }
 
 function TGpSQLBuilder.Having(const expression: string): IGpSQLBuilder;
 begin
-  FActiveSection := AST[secHaving];
+  SelectSection(secHaving);
   if expression = '' then
     Result := Self
   else
@@ -627,11 +637,15 @@ begin
 end; { TGpSQLBuilder.IsEmpty }
 
 function TGpSQLBuilder.LeftJoin(const dbName: string): IGpSQLBuilder;
+var
+  join: IGpSQLJoin;
 begin
-  FActiveSection := AST[secLeftJoin];
-  if (FActiveSection.AsString <> '') then // previous LEFT JOIN content
-    FActiveSection.Add('LEFT JOIN');
-  FActiveSection.Add([dbName, 'ON']);
+  FActiveSection := secJoin;
+  FASTSection := FAST.Joins.Add;
+  join := (FASTSection as IGpSQLJoin);
+  join.JoinType := jtLeft;
+  FASTName := join.JoinedTable;
+  FASTName.Name := dbName;
   Result := Self;
 end; { TGpSQLBuilder.LeftJoin }
 
@@ -647,7 +661,7 @@ end; { TGpSQLBuilder }
 
 function TGpSQLBuilder.OrderBy(const colName: string): IGpSQLBuilder;
 begin
-  FActiveSection := AST[secOrderBy];
+  SelectSection(secOrderBy);
   if colName = '' then
     Result := Self
   else
@@ -670,14 +684,32 @@ begin
   Result := &Or(expression.AsString);
 end; { TGpSQLBuilder }
 
+function TGpSQLBuilder.GetAST: IGpSQLAST;
+begin
+  Result := FAST;
+end; { TGpSQLBuilder.GetAST }
+
 function TGpSQLBuilder.Select(const colName: string): IGpSQLBuilder;
 begin
-  FActiveSection := AST[secSelect];
+  SelectSection(secSelect);
   if colName = '' then
     Result := Self
   else
     Result := Column(colName);
 end; { TGpSQLBuilder.Select }
+
+procedure TGpSQLBuilder.SelectSection(section: TGpSQLSection);
+begin
+  case section of
+    secSelect:  FASTSection := FAST.Select;
+//    secJoin:    FASTSection := FAST.Joins;
+    secWhere:   FASTSection := FAST.Where;
+    secGroupBy: FASTSection := FAST.GroupBy;
+    secHaving:  FASTSection := FAST.Having;
+    secOrderBy: FASTSection := FAST.OrderBy;
+  end;
+  FActiveSection := section;
+end; { TGpSQLBuilder.SelectSection }
 
 function TGpSQLBuilder.Skip(num: integer): IGpSQLBuilder;
 var
@@ -693,7 +725,7 @@ end; { TGpSQLBuilder.Skip }
 
 function TGpSQLBuilder.Where(const expression: string): IGpSQLBuilder;
 begin
-  FActiveSection := AST [secWhere];
+  SelectSection(secWhere);
   if expression = '' then
     Result := Self
   else

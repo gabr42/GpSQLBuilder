@@ -44,9 +44,6 @@ uses
   System.Generics.Collections;
 
 type
-  TGpSQLSection = (secSelect, secLeftJoin, secWhere, secGroupBy, secHaving, secOrderBy);
-  TGpSQLSections = set of TGpSQLSection;
-
   TGpSQLStringType = (stNormal, stAnd, stOr, stList, stAppend); // TODO -oPrimoz Gabrijelcic : should not be necessary in 3.0
 
   IGpSQLName = interface
@@ -64,23 +61,15 @@ type
   ['{DA9157F6-3526-4DA4-8CD3-115DFE7719B3}']
     function  GetColumns(idx: integer): IGpSQLName;
   //
-    procedure Add(const name: string);
+    procedure Add(const name: IGpSQLName);
     function  Count: integer;
     property Columns[idx: integer]: IGpSQLName read GetColumns; default;
   end; { IGpSQLColumns }
 
-  IGpSQLSection = interface
-  ['{BE0A0FF9-AD70-40C5-A1C2-7FA2F7061153}']
-    function  GetAsString: string;
-    function  GetSection: TGpSQLSection;
+  IGpSQLSection = interface ['{BE0A0FF9-AD70-40C5-A1C2-7FA2F7061153}']
+    function  GetName: string;
   //
-    procedure Add(const params: array of const; paramType: TGpSQLStringType = stNormal;
-      const pushBefore: string = ''); overload;
-    procedure Add(const params: string; paramType: TGpSQLStringType = stNormal;
-      const pushBefore: string = ''); overload;
-    procedure Clear;
-    property AsString: string read GetAsString;
-    property Section: TGpSQLSection read GetSection;
+    property Name: string read GetName;
   end; { IGpSQLSection }
 
   TGpSQLSelectQualifierType = (sqFirst, sqSkip);
@@ -112,15 +101,73 @@ type
     property TableName: IGpSQLName read GetTableName write SetTableName;
   end; { IGpSQLSelect }
 
-  IGpSQLAST = interface
-    function GetSection(sect: TGpSQLSection): IGpSQLSection;
+  IGpSQLExpression = interface ['{011D9FD2-AE54-4720-98AB-085D6F6B421E}']
+  end; { IGpSQLExpression }
+
+  TGpSQLJoinType = (jtLeft, jtLeftOuter, jtRight, jtRightOuter); // TODO -oPrimoz Gabrijelcic : Is that all?
+
+  IGpSQLJoin = interface(IGpSQLSection) ['{CD8AD84D-2FCC-4EBD-A83A-A637CF9D188E}']
+    function  GetCondition: IGpSQLExpression;
+    function  GetJoinedTable: IGpSQLName;
+    function  GetJoinType: TGpSQLJoinType;
+    procedure SetCondition(const value: IGpSQLExpression);
+    procedure SetJoinedTable(const value: IGpSQLName);
+    procedure SetJoinType(const value: TGpSQLJoinType);
   //
-    property Section[sect: TGpSQLSection]: IGpSQLSection read GetSection; default;
+    property JoinedTable: IGpSQLName read GetJoinedTable write SetJoinedTable;
+    property JoinType: TGpSQLJoinType read GetJoinType write SetJoinType;
+    property Condition: IGpSQLExpression read GetCondition write SetCondition;
+  end; { IGpSQLJoin }
+
+  IGpSQLJoins = interface ['{5C277003-FC57-4DE5-B041-371012A51D82}']
+  end; { IGpSQLJoins }
+
+  IGpSQLWhere = interface(IGpSQLSection) ['{77BD3E41-53DC-4FC7-B0ED-B339564791AA}']
+    function GetExpression: IGpSQLExpression;
+  //
+    property Expression: IGpSQLExpression read GetExpression;
+  end; { IGpSQLWhere }
+
+  IGpSQLGroupBy = interface(IGpSQLSection) ['{B8B50CF2-2E2A-4C3C-B9B6-D6B0BE92502C}']
+    function GetColumn: IGpSQLName;
+  //
+    property Column: IGpSQLName read GetColumn;
+  end; { IGpSQLGroupBy }
+
+  IGpSQLHaving = interface(IGpSQLSection) ['{BF1459A7-C665-4983-A724-A7002F6D201F}']
+    function  GetExpression: string;
+    procedure SetExpression(const value: string);
+  //
+    property Expression: string read GetExpression write SetExpression;
+  end; { IGpSQLHaving }
+
+  IGpSQLOrderByColumns = interface ['{05ECC702-D102-4D7D-A150-49A7A8787A7C}']
+  end; { IGpSQLOrderByColumns }
+
+  IGpSQLOrderBy = interface(IGpSQLSection) ['{6BC985B7-219A-4359-9F21-60A985969368}']
+    function GetColumns: IGpSQLOrderByColumns;
+  //
+    property Columns: IGpSQLOrderByColumns read GetColumns;
+  end; { IGpSQLOrderBy }
+
+  IGpSQLAST = interface
+    function GetGroupBy: IGpSQLGroupBy;
+    function GetHaving: IGpSQLHaving;
+    function GetJoins: IGpSQLJoins;
+    function GetOrderBy: IGpSQLOrderBy;
+    function GetSelect: IGpSQLSelect;
+    function GetWhere: IGpSQLWhere;
+  //
+    property Select: IGpSQLSelect read GetSelect;
+    property Joins: IGpSQLJoins read GetJoins;
+    property Where: IGpSQLWhere read GetWhere;
+    property GroupBy: IGpSQLGroupBy read GetGroupBy;
+    property Having: IGpSQLHaving read GetHaving;
+    property OrderBy: IGpSQLOrderBy read GetOrderBy;
   end; { IGpSQLAST }
 
   function CreateSQLName: IGpSQLName;
   function CreateSQLColumns: IGpSQLColumns;
-  function CreateSQLSection(section: TGpSQLSection): IGpSQLSection;
   function CreateSQLSelectQualifier: IGpSQLSelectQualifier;
   function CreateSQLSelectQualifiers: IGpSQLSelectQualifiers;
   function CreateSQLAST: IGpSQLAST;
@@ -155,32 +202,20 @@ type
   public
     constructor Create;
     destructor  Destroy; override;
-    procedure Add(const name: string);
+    procedure Add(const name: IGpSQLName);
     function  Count: integer;
     property Columns[idx: integer]: IGpSQLName read GetColumns; default;
   end; { TGpSQLColumns }
 
-  TGpSQLBaseSection = class(TInterfacedObject, IGpSQLSection)
+  TGpSQLSection = class(TInterfacedObject, IGpSQLSection)
   strict private
-    FAsString        : string;
-    FInsertedParen   : boolean;
-    FIsAndExpr       : boolean;
-    FIsList          : boolean;
-    FLastAndInsertion: integer;
-    FSection: TGpSQLSection;
+    FName: string;
   strict protected
-    function  GetAsString: string;
-    function  GetSection: TGpSQLSection;
+    function  GetName: string;
   public
-    constructor Create(section: TGpSQLSection);
-    procedure Add(const params: array of const; paramType: TGpSQLStringType = stNormal;
-      const pushBefore: string = ''); overload;
-    procedure Add(const params: string; paramType: TGpSQLStringType = stNormal;
-      const pushBefore: string = ''); overload;
-    procedure Clear;
-    property AsString: string read GetAsString;
-    property Section: TGpSQLSection read GetSection;
-  end; { TGpSQLBaseSection }
+    constructor Create(sectionName: string);
+    property Name: string read GetName;
+  end; { TGpSQLSection }
 
   TGpSQLSelectQualifier = class(TInterfacedObject, IGpSQLSelectQualifier)
   strict private
@@ -209,7 +244,7 @@ type
     property Qualifier[idx: integer]: IGpSQLSelectQualifier read GetQualifier; default;
   end; { TGpSQLSelectQualifiers }
 
-  TGpSQLSelect = class(TGpSQLBaseSection, IGpSQLSelect, IGpSQLColumns)
+  TGpSQLSelect = class(TGpSQLSection, IGpSQLSelect, IGpSQLColumns)
   strict private
     FColumns   : IGpSQLColumns;
     FQualifiers: IGpSQLSelectQualifiers;
@@ -226,14 +261,95 @@ type
     property TableName: IGpSQLName read GetTableName write SetTableName;
   end; { IGpSQLSelect }
 
-  TGpSQLAST = class(TInterfacedObject, IGpSQLAST)
+  TGpSQLJoin = class(TGpSQLSection, IGpSQLJoin)
   strict private
-    FSections: array [TGpSQLSection] of IGpSQLSection;
+    FCondition  : IGpSQLExpression;
+    FJoinedTable: IGpSQLName;
+    FJoinType   : TGpSQLJoinType;
   strict protected
-    function  GetSection(sect: TGpSQLSection): IGpSQLSection; inline;
+    function  GetCondition: IGpSQLExpression;
+    function  GetJoinedTable: IGpSQLName;
+    function  GetJoinType: TGpSQLJoinType;
+    procedure SetCondition(const value: IGpSQLExpression);
+    procedure SetJoinedTable(const value: IGpSQLName);
+    procedure SetJoinType(const value: TGpSQLJoinType);
   public
     constructor Create;
-    property Section[sect: TGpSQLSection]: IGpSQLSection read GetSection; default;
+    property Condition: IGpSQLExpression read GetCondition write SetCondition;
+    property JoinedTable: IGpSQLName read GetJoinedTable write SetJoinedTable;
+    property JoinType: TGpSQLJoinType read GetJoinType write SetJoinType;
+  end; { TGpSQLJoin }
+
+  TGpSQLJoins = class(TInterfacedObject, IGpSQLJoins)
+  end; { TGpSQLJoins }
+
+  TGpSQLWhere = class(TGpSQLSection, IGpSQLWhere)
+  strict private
+    FExpression: IGpSQLExpression;
+  strict protected
+    function  GetExpression: IGpSQLExpression;
+  public
+    constructor Create;
+    property Expression: IGpSQLExpression read GetExpression;
+  end; { TGpSQLWhere }
+
+  TGpSQLGroupBy = class(TGpSQLSection, IGpSQLGroupBy)
+  strict private
+    FColumn: IGpSQLName;
+  strict protected
+    function  GetColumn: IGpSQLName;
+  public
+    constructor Create;
+    property Column: IGpSQLName read GetColumn;
+  end; { IGpSQLGroupBy }
+
+  TGpSQLHaving = class(TGpSQLSection, IGpSQLHaving)
+  strict private
+    FExpression: string;
+  strict protected
+    function  GetExpression: string;
+    procedure SetExpression(const value: string);
+  public
+    constructor Create;
+    property Expression: string read GetExpression write SetExpression;
+  end; { TGpSQLHaving }
+
+  TGpSQLOrderByColumns = class(TInterfacedObject, IGpSQLOrderByColumns)
+  end; { TGpSQLOrderByColumns }
+
+  TGpSQLOrderBy = class(TGpSQLSection, IGpSQLOrderBy)
+  strict private
+    FColumns: IGpSQLOrderByColumns;
+  strict protected
+    function  GetColumns: IGpSQLOrderByColumns;
+  public
+    constructor Create;
+    property Columns: IGpSQLOrderByColumns read GetColumns;
+  end; { IGpSQLOrderBy }
+
+  TGpSQLAST = class(TInterfacedObject, IGpSQLAST)
+  strict private
+    FGroupBy: IGpSQLGroupBy;
+    FHaving : IGpSQLHaving;
+    FJoins  : IGpSQLJoins;
+    FOrderBy: IGpSQLOrderBy;
+    FSelect : IGpSQLSelect;
+    FWhere  : IGpSQLWhere;
+  strict protected
+    function GetGroupBy: IGpSQLGroupBy;
+    function GetHaving: IGpSQLHaving;
+    function GetJoins: IGpSQLJoins;
+    function GetOrderBy: IGpSQLOrderBy;
+    function GetSelect: IGpSQLSelect;
+    function GetWhere: IGpSQLWhere;
+  public
+    constructor Create;
+    property Select: IGpSQLSelect read GetSelect;
+    property Joins: IGpSQLJoins read GetJoins;
+    property Where: IGpSQLWhere read GetWhere;
+    property GroupBy: IGpSQLGroupBy read GetGroupBy;
+    property Having: IGpSQLHaving read GetHaving;
+    property OrderBy: IGpSQLOrderBy read GetOrderBy;
   end; { TGpSQLAST }
 
 { exports }
@@ -247,14 +363,6 @@ function CreateSQLColumns: IGpSQLColumns;
 begin
   Result := TGpSQLColumns.Create;
 end; { CreateSQLColumns }
-
-function CreateSQLSection(section: TGpSQLSection): IGpSQLSection;
-begin
-  case section of
-    secSelect:   Result := TGpSQLSelect.Create;
-    else         Result := TGpSQLBaseSection.Create(section);
-  end;
-end; { CreateSection }
 
 function CreateSQLSelectQualifier: IGpSQLSelectQualifier;
 begin
@@ -307,13 +415,9 @@ begin
   inherited;
 end; { TGpSQLColumns.Destroy }
 
-procedure TGpSQLColumns.Add(const name: string);
-var
-  column: IGpSQLName;
+procedure TGpSQLColumns.Add(const name: IGpSQLName);
 begin
-  column := CreateSQLName;
-  column.Name := name;
-  FColumns.Add(column);
+  FColumns.Add(name);
 end; { TGpSQLColumns.Add }
 
 function TGpSQLColumns.Count: integer;
@@ -326,74 +430,18 @@ begin
   Result := FColumns[idx];
 end; { TGpSQLColumns.GetColumns }
 
-{ TGpSQLBaseSection }
+{ TGpSQLSection }
 
-constructor TGpSQLBaseSection.Create(section: TGpSQLSection);
+constructor TGpSQLSection.Create(sectionName: string);
 begin
   inherited Create;
-  FSection := section;
-end; { TGpSQLBaseSection.Create }
+  FName := sectionName;
+end; { TGpSQLSection.Create }
 
-procedure TGpSQLBaseSection.Add(const params: array of const; paramType: TGpSQLStringType;
-  const pushBefore: string);
-var
-  sParams: string;
+function TGpSQLSection.GetName: string;
 begin
-  if paramType = stOr then begin
-    if not FIsAndExpr then
-      raise Exception.Create('TGpSQLBaseSection: OrE without preceding AndE');
-    if not FInsertedParen then begin
-      Insert('(', FAsString, FLastAndInsertion);
-      FInsertedParen := true;
-    end
-    else
-      Delete(FAsString, Length(FAsString), 1);
-  end;
-  if FIsAndExpr and (paramType = stAnd) then
-    FAsString := SqlParamsToStr([FAsString, 'AND']);
-  if paramType = stAnd then begin
-    FLastAndInsertion := Length(FAsString) + 2; // +1 because we will insert '(' _after_ the last character and +1 because query builder will append ' ' to 'AND' in the next step
-    FInsertedParen := false;
-  end;
-  if FIsList and (paramType = stList) then
-    FAsString := SqlParamsToStr([FAsString, ',']);
-  sParams := SqlParamsToStr(params);
-  if paramType = stOr then
-    FAsString := SqlParamsToStr([FAsString, 'OR', sParams, ')'])
-  else if (pushBefore = '') or (not EndsText(pushBefore, FAsString)) then
-    FAsString := SqlParamsToStr([FAsString, sParams])
-  else begin
-    Delete(FAsString, Length(FAsString) - Length(pushBefore) + 1, Length(pushBefore));
-    FAsString := SqlParamsToStr([FAsString, sParams, pushBefore]);
-  end;
-  if not (paramType in [stAppend, stOr]) then begin
-    FIsAndExpr := (paramType = stAnd);
-    FIsList := (paramType = stList);
-  end;
-end; { TGpSQLBaseSection.Add }
-
-procedure TGpSQLBaseSection.Add(const params: string; paramType: TGpSQLStringType;
-  const pushBefore: string);
-begin
-  Add([params], paramType, pushBefore);
-end; { TGpSQLBaseSection.Add }
-
-procedure TGpSQLBaseSection.Clear;
-begin
-  FAsString := '';
-  FIsAndExpr := false;
-  FIsList := false;
-end; { TGpSQLBaseSection.Clear }
-
-function TGpSQLBaseSection.GetAsString: string;
-begin
-  Result := FAsString;
-end; { TGpSQLBaseSection.GetAsString }
-
-function TGpSQLBaseSection.GetSection: TGpSQLSection;
-begin
-  Result := FSection;
-end; { TGpSQLBaseSection.GetSection }
+  Result := FName;
+end;
 
 { TGpSQLSelectQualifier }
 
@@ -450,7 +498,7 @@ end; { TGpSQLSelectQualifiers.GetQualifier }
 
 constructor TGpSQLSelect.Create;
 begin
-  inherited Create(secSelect);
+  inherited Create('Select');
   FColumns := CreateSQLColumns;
   FQualifiers := CreateSQLSelectQualifiers;
   FTableName := CreateSQLName;
@@ -476,20 +524,139 @@ begin
   FTableName := value;
 end; { TGpSQLSelect.SetTableName }
 
+{ TGpSQLJoin }
+
+constructor TGpSQLJoin.Create;
+begin
+  inherited Create('Join');
+end; { TGpSQLJoin.Create }
+
+function TGpSQLJoin.GetCondition: IGpSQLExpression;
+begin
+  Result := FCondition;
+end; { TGpSQLJoin.GetCondition }
+
+function TGpSQLJoin.GetJoinedTable: IGpSQLName;
+begin
+  Result := FJoinedTable;
+end; { TGpSQLJoin.GetJoinedTable }
+
+function TGpSQLJoin.GetJoinType: TGpSQLJoinType;
+begin
+  Result := FJoinType;
+end; { TGpSQLJoin.GetJoinType }
+
+procedure TGpSQLJoin.SetCondition(const value: IGpSQLExpression);
+begin
+  FCondition := value;
+end; { TGpSQLJoin.SetCondition }
+
+procedure TGpSQLJoin.SetJoinedTable(const value: IGpSQLName);
+begin
+  FJoinedTable := value;
+end; { TGpSQLJoin.SetJoinedTable }
+
+procedure TGpSQLJoin.SetJoinType(const value: TGpSQLJoinType);
+begin
+  FJoinType := value;
+end; { TGpSQLJoin.SetJoinType }
+
+{ TGpSQLWhere }
+
+constructor TGpSQLWhere.Create;
+begin
+  inherited Create('Where');
+end; { TGpSQLWhere.Create }
+
+function TGpSQLWhere.GetExpression: IGpSQLExpression;
+begin
+  Result := FExpression;
+end; { TGpSQLWhere.GetExpression }
+
+{ TGpSQLGroupBy }
+
+constructor TGpSQLGroupBy.Create;
+begin
+  inherited Create('GroupBy');
+end; { TGpSQLGroupBy.Create }
+
+function TGpSQLGroupBy.GetColumn: IGpSQLName;
+begin
+  Result := FColumn;
+end; { TGpSQLGroupBy.GetColumn }
+
+{ TGpSQLHaving }
+
+constructor TGpSQLHaving.Create;
+begin
+  inherited Create('Having');
+end; { TGpSQLHaving.Create }
+
+function TGpSQLHaving.GetExpression: string;
+begin
+  Result := FExpression;
+end; { TGpSQLHaving.GetExpression }
+
+{ TGpSQLHaving }
+
+procedure TGpSQLHaving.SetExpression(const value: string);
+begin
+  FExpression := value;
+end; { TGpSQLHaving.SetExpression }
+
+{ TGpSQLOrderBy }
+
+constructor TGpSQLOrderBy.Create;
+begin
+  inherited Create('OrderBy');
+end; { TGpSQLOrderBy.Create }
+
+function TGpSQLOrderBy.GetColumns: IGpSQLOrderByColumns;
+begin
+  Result := FColumns;
+end; { TGpSQLOrderBy.GetColumns }
+
 { TGpSQLAST }
 
 constructor TGpSQLAST.Create;
-var
-  section: TGpSQLSection;
 begin
   inherited;
-  for section := Low(TGpSQLSection) to High(TGpSQLSection) do
-    FSections[section] := CreateSQLSection(section);
+  FSelect := TGpSQLSelect.Create;
+  FJoins := TGpSQLJoins.Create;
+  FWhere := TGpSQLWhere.Create;
+  FGroupBy := TGpSQLGroupBy.Create;
+  FHaving := TGpSQLHaving.Create;
+  FOrderBy := TGpSQLOrderBy.Create;
 end; { TGpSQLAST.Create }
 
-function TGpSQLAST.GetSection(sect: TGpSQLSection): IGpSQLSection;
+function TGpSQLAST.GetGroupBy: IGpSQLGroupBy;
 begin
-  Result := FSections[sect];
-end; { TGpSQLAST.GetSection }
+  Result := FGroupBy;
+end; { TGpSQLAST.GetGroupBy }
+
+function TGpSQLAST.GetHaving: IGpSQLHaving;
+begin
+  Result := FHaving;
+end; { TGpSQLAST.GetHaving }
+
+function TGpSQLAST.GetJoins: IGpSQLJoins;
+begin
+  Result := FJoins;
+end;
+
+function TGpSQLAST.GetOrderBy: IGpSQLOrderBy;
+begin
+  Result := FOrderBy;
+end; { TGpSQLAST.GetOrderBy }
+
+function TGpSQLAST.GetSelect: IGpSQLSelect;
+begin
+  Result := FSelect;
+end; { TGpSQLAST.GetSelect }
+
+function TGpSQLAST.GetWhere: IGpSQLWhere;
+begin
+  Result := FWhere;
+end; { TGpSQLAST.GetWhere }
 
 end.

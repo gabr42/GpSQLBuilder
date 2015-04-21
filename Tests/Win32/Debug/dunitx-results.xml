@@ -1,1 +1,179 @@
-﻿
+﻿<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
+<test-results name="H:\razvoj\GpSQLBuilder\Tests\Win32\Debug\TestGpSQLBuilder.exe" total="46" errors="8" failures="4" ignored="0" inconclusive="0" not-run="0" skipped="0" invalid="0" date="2015-04-20" time="0.008">
+  <environment nunit-version="DUnitX" clr-version="2.0.0.0" os-version="6.1.0.0" platform="Windows" cwd="c:\test" machine-name="mymachine" user="vincent" user-domain="finalbuilder.com"  />
+  <culture-info current-culture="en" current-uiculture="en" />
+  <test-suite type="Assembly" name="TestGpSQLBuilder.exe" executed="true" result="Failure" success="False" time="0.008" asserts="0">
+    <results>
+        <test-suite type="Namespace" name="TestGpSQLBuilder1" executed="true" result="Success" success="True" time="0.001" asserts="0" >
+          <results>
+              <test-suite type="Fixture" name="TTestGpSQLBuilderCase" executed="True" result="Success" success="True" time="0.001" >
+                <results>
+                  <test-case name="TestCase" executed="True" result="Success" success="True" time="0.001" asserts="0" />
+                  <test-case name="TestCase2" executed="True" result="Success" success="True" time="0.000" asserts="0" />
+                  <test-case name="TestCase3" executed="True" result="Success" success="True" time="0.000" asserts="0" />
+                  <test-case name="TestCaseAndOr" executed="True" result="Success" success="True" time="0.000" asserts="0" />
+                </results>
+              </test-suite>
+          </results>
+        </test-suite>
+        <test-suite type="Fixture" name="TTestGpSQLBuilderExpression" executed="True" result="Success" success="True" time="0.000" >
+          <results>
+            <test-case name="TestAnd" executed="True" result="Success" success="True" time="0.000" asserts="0" />
+            <test-case name="TestAnd2" executed="True" result="Success" success="True" time="0.000" asserts="0" />
+            <test-case name="TestOr" executed="True" result="Success" success="True" time="0.000" asserts="0" />
+            <test-case name="TestAndOr" executed="True" result="Success" success="True" time="0.000" asserts="0" />
+          </results>
+        </test-suite>
+        <test-suite type="Fixture" name="TTestGpSQLBuilder" executed="True" result="Failure" success="False" time="0.007" >
+          <results>
+            <test-case name="TestEmptyResult" executed="True" result="Success" success="True" time="0.000" asserts="0" />
+            <test-case name="TestSelectAll" executed="True" result="Success" success="True" time="0.000" asserts="0" />
+            <test-case name="TestSelectAll2" executed="True" result="Success" success="True" time="0.000" asserts="0" />
+            <test-case name="TestSelectColumn" executed="True" result="Success" success="True" time="0.000" asserts="0" />
+            <test-case name="TestSelectColumn2" executed="True" result="Success" success="True" time="0.000" asserts="0" />
+            <test-case name="TestSelectTwoColumns" executed="True" result="Success" success="True" time="0.000" asserts="0" />
+            <test-case name="TestSelectDBColumn" executed="True" result="Success" success="True" time="0.000" asserts="0" />
+            <test-case name="TestDBAlias" executed="True" result="Success" success="True" time="0.000" asserts="0" />
+            <test-case name="TestColumnAlias" executed="True" result="Success" success="True" time="0.000" asserts="0" />
+            <test-case name="TestSelectFirst" executed="True" result="Success" success="True" time="0.000" asserts="0" />
+            <test-case name="TestSelectFirstSkip" executed="True" result="Success" success="True" time="0.000" asserts="0" />
+            <test-case name="TestSelectWhere" executed="True" result="Success" success="True" time="0.000" asserts="0" />
+            <test-case name="TestLeftJoin" executed="True" result="Success" success="True" time="0.000" asserts="0" />
+            <test-case name="TestLeftJoin2" executed="True" result="Success" success="True" time="0.000" asserts="0" />
+            <test-case name="TestLeftJoinAnd" executed="True" result="Success" success="True" time="0.000" asserts="0" />
+            <test-case name="TestLeftJoinAlias" executed="True" result="Failure" success="False" time="0.000" asserts="0" >
+              <failure>
+                <message>
+                  <![CDATA[ [SELECT * FROM Test LEFT JOIN Detail AS DetailAlias ON (Column1 = DetailID)] is Not Equal to [SELECT * FROM Test LEFT JOIN Detail ON AS DetailAlias (Column1 = DetailID)]  ]]>
+                </message>
+                <stack-trace>
+                  <![CDATA[  ]]>
+                </stack-trace>
+              </failure>
+            </test-case>
+            <test-case name="TestDoubleLeftJoin" executed="True" result="Success" success="True" time="0.000" asserts="0" />
+            <test-case name="TestGroupBy" executed="True" result="Error" success="False" time="0.000" asserts="0" >
+              <failure>
+                <message>
+                  <![CDATA[ Current section [GROUP BY] does not support COLUMN. ]]>
+                </message>
+                <stack-trace>
+                  <![CDATA[  ]]>
+                </stack-trace>
+              </failure>
+            </test-case>
+            <test-case name="TestGroupByHaving" executed="True" result="Error" success="False" time="0.000" asserts="0" >
+              <failure>
+                <message>
+                  <![CDATA[ Current section [GROUP BY] does not support COLUMN. ]]>
+                </message>
+                <stack-trace>
+                  <![CDATA[  ]]>
+                </stack-trace>
+              </failure>
+            </test-case>
+            <test-case name="TestOrderBy" executed="True" result="Error" success="False" time="0.000" asserts="0" >
+              <failure>
+                <message>
+                  <![CDATA[ Current section [ORDER BY] does not support COLUMN. ]]>
+                </message>
+                <stack-trace>
+                  <![CDATA[  ]]>
+                </stack-trace>
+              </failure>
+            </test-case>
+            <test-case name="TestOrderBy2" executed="True" result="Error" success="False" time="0.000" asserts="0" >
+              <failure>
+                <message>
+                  <![CDATA[ Current section [ORDER BY] does not support COLUMN. ]]>
+                </message>
+                <stack-trace>
+                  <![CDATA[  ]]>
+                </stack-trace>
+              </failure>
+            </test-case>
+            <test-case name="TestOrderByTwoColumns" executed="True" result="Error" success="False" time="0.000" asserts="0" >
+              <failure>
+                <message>
+                  <![CDATA[ Current section [ORDER BY] does not support COLUMN. ]]>
+                </message>
+                <stack-trace>
+                  <![CDATA[  ]]>
+                </stack-trace>
+              </failure>
+            </test-case>
+            <test-case name="TestOrderByDesc" executed="True" result="Error" success="False" time="0.000" asserts="0" >
+              <failure>
+                <message>
+                  <![CDATA[ Current section [ORDER BY] does not support COLUMN. ]]>
+                </message>
+                <stack-trace>
+                  <![CDATA[  ]]>
+                </stack-trace>
+              </failure>
+            </test-case>
+            <test-case name="TestOrderByTwoColumnsDesc1" executed="True" result="Error" success="False" time="0.000" asserts="0" >
+              <failure>
+                <message>
+                  <![CDATA[ Current section [ORDER BY] does not support COLUMN. ]]>
+                </message>
+                <stack-trace>
+                  <![CDATA[  ]]>
+                </stack-trace>
+              </failure>
+            </test-case>
+            <test-case name="TestOrderByTwoColumnsDesc2" executed="True" result="Error" success="False" time="0.000" asserts="0" >
+              <failure>
+                <message>
+                  <![CDATA[ Current section [ORDER BY] does not support COLUMN. ]]>
+                </message>
+                <stack-trace>
+                  <![CDATA[  ]]>
+                </stack-trace>
+              </failure>
+            </test-case>
+            <test-case name="TestWhereAnd" executed="True" result="Success" success="True" time="0.000" asserts="0" />
+            <test-case name="TestWhereAnd2" executed="True" result="Success" success="True" time="0.000" asserts="0" />
+            <test-case name="TestWhereOr" executed="True" result="Success" success="True" time="0.000" asserts="0" />
+            <test-case name="TestWhereAndOr" executed="True" result="Success" success="True" time="0.000" asserts="0" />
+            <test-case name="TestCaseIntegration" executed="True" result="Failure" success="False" time="0.000" asserts="0" >
+              <failure>
+                <message>
+                  <![CDATA[ [SELECT CASE WHEN (Column2 < 0) THEN 0 WHEN (Column2 > 100) THEN 2 ELSE 1 END FROM Test] is Not Equal to [SELECT FROM Test]  ]]>
+                </message>
+                <stack-trace>
+                  <![CDATA[  ]]>
+                </stack-trace>
+              </failure>
+            </test-case>
+            <test-case name="TestExpressionIntegration" executed="True" result="Success" success="True" time="0.000" asserts="0" />
+            <test-case name="TestExpressionIntegration2" executed="True" result="Success" success="True" time="0.000" asserts="0" />
+            <test-case name="TestMixed" executed="True" result="Success" success="True" time="0.000" asserts="0" />
+            <test-case name="TestSectionEmpty" executed="True" result="Success" success="True" time="0.000" asserts="0" />
+            <test-case name="TestSectionEmpty2" executed="True" result="Success" success="True" time="0.000" asserts="0" />
+            <test-case name="TestSectionEmpty3" executed="True" result="Success" success="True" time="0.000" asserts="0" />
+            <test-case name="TestSectionNotEmpty" executed="True" result="Failure" success="False" time="0.000" asserts="0" >
+              <failure>
+                <message>
+                  <![CDATA[ Condition is True when False expected.  ]]>
+                </message>
+                <stack-trace>
+                  <![CDATA[  ]]>
+                </stack-trace>
+              </failure>
+            </test-case>
+            <test-case name="TestSectionNotEmpty2" executed="True" result="Failure" success="False" time="0.000" asserts="0" >
+              <failure>
+                <message>
+                  <![CDATA[ Condition is True when False expected.  ]]>
+                </message>
+                <stack-trace>
+                  <![CDATA[  ]]>
+                </stack-trace>
+              </failure>
+            </test-case>
+          </results>
+        </test-suite>
+    </results>
+  </test-suite>
+</test-results>
