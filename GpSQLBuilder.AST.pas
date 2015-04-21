@@ -130,9 +130,6 @@ type
   end; { IGpSQLWhere }
 
   IGpSQLGroupBy = interface(IGpSQLSection) ['{B8B50CF2-2E2A-4C3C-B9B6-D6B0BE92502C}']
-    function GetColumn: IGpSQLName;
-  //
-    property Column: IGpSQLName read GetColumn;
   end; { IGpSQLGroupBy }
 
   IGpSQLHaving = interface(IGpSQLSection) ['{BF1459A7-C665-4983-A724-A7002F6D201F}']
@@ -146,9 +143,9 @@ type
   end; { IGpSQLOrderByColumns }
 
   IGpSQLOrderBy = interface(IGpSQLSection) ['{6BC985B7-219A-4359-9F21-60A985969368}']
-    function GetColumns: IGpSQLOrderByColumns;
+//    function GetColumns: IGpSQLOrderByColumns;
   //
-    property Columns: IGpSQLOrderByColumns read GetColumns;
+//    property Columns: IGpSQLOrderByColumns read GetColumns;
   end; { IGpSQLOrderBy }
 
   IGpSQLAST = interface
@@ -302,14 +299,14 @@ type
     property Expression: IGpSQLExpression read GetExpression;
   end; { TGpSQLWhere }
 
-  TGpSQLGroupBy = class(TGpSQLSection, IGpSQLGroupBy)
+  TGpSQLGroupBy = class(TGpSQLSection, IGpSQLGroupBy, IGpSQLColumns)
   strict private
-    FColumn: IGpSQLName;
+    FColumns: IGpSQLColumns;
   strict protected
-    function  GetColumn: IGpSQLName;
+    function GetColumns: IGpSQLColumns;
   public
     constructor Create;
-    property Column: IGpSQLName read GetColumn;
+    property Columns: IGpSQLColumns read FColumns implements IGpSQLColumns;
   end; { IGpSQLGroupBy }
 
   TGpSQLHaving = class(TGpSQLSection, IGpSQLHaving)
@@ -323,17 +320,17 @@ type
     property Expression: string read GetExpression write SetExpression;
   end; { TGpSQLHaving }
 
-  TGpSQLOrderByColumns = class(TInterfacedObject, IGpSQLOrderByColumns)
+  TGpSQLOrderByColumns = class(TGpSQLColumns, IGpSQLColumns, IGpSQLOrderByColumns)
   end; { TGpSQLOrderByColumns }
 
-  TGpSQLOrderBy = class(TGpSQLSection, IGpSQLOrderBy)
+  TGpSQLOrderBy = class(TGpSQLSection, IGpSQLOrderBy, IGpSQLColumns)
   strict private
-    FColumns: IGpSQLOrderByColumns;
+    FColumns: IGpSQLColumns;
   strict protected
-    function  GetColumns: IGpSQLOrderByColumns;
+    function  GetColumns: IGpSQLColumns;
   public
     constructor Create;
-    property Columns: IGpSQLOrderByColumns read GetColumns;
+    property Columns: IGpSQLColumns read GetColumns implements IGpSQLColumns;
   end; { IGpSQLOrderBy }
 
   TGpSQLAST = class(TInterfacedObject, IGpSQLAST)
@@ -543,6 +540,7 @@ end; { TGpSQLSelect.SetTableName }
 constructor TGpSQLJoin.Create;
 begin
   inherited Create('Join');
+  FJoinedTable := CreateSQLName;
 end; { TGpSQLJoin.Create }
 
 function TGpSQLJoin.GetCondition: IGpSQLExpression;
@@ -611,12 +609,13 @@ end; { TGpSQLWhere.GetExpression }
 constructor TGpSQLGroupBy.Create;
 begin
   inherited Create('GroupBy');
+  FColumns := CreateSQLColumns;
 end; { TGpSQLGroupBy.Create }
 
-function TGpSQLGroupBy.GetColumn: IGpSQLName;
+function TGpSQLGroupBy.GetColumns: IGpSQLColumns;
 begin
-  Result := FColumn;
-end; { TGpSQLGroupBy.GetColumn }
+  Result := FColumns;
+end; { TGpSQLGroupBy.GetColumns }
 
 { TGpSQLHaving }
 
@@ -642,9 +641,10 @@ end; { TGpSQLHaving.SetExpression }
 constructor TGpSQLOrderBy.Create;
 begin
   inherited Create('OrderBy');
+  FColumns := CreateSQLColumns;
 end; { TGpSQLOrderBy.Create }
 
-function TGpSQLOrderBy.GetColumns: IGpSQLOrderByColumns;
+function TGpSQLOrderBy.GetColumns: IGpSQLColumns;
 begin
   Result := FColumns;
 end; { TGpSQLOrderBy.GetColumns }
