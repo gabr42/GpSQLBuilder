@@ -527,8 +527,7 @@ end; { TGpSQLBuilder }
 
 function TGpSQLBuilder.Clear: IGpSQLBuilder;
 begin
-  // TODO -oPrimoz Gabrijelcic : implement: TGpSQLBuilder.Clear
-//  FActiveSection.Clear;
+  FASTSection.Clear;
   Result := Self;
 end; { TGpSQLBuilder.Clear }
 
@@ -536,9 +535,7 @@ function TGpSQLBuilder.ClearAll: IGpSQLBuilder;
 var
   section: TGpSQLSection;
 begin
-  // TODO -oPrimoz Gabrijelcic : implement: TGpSQLBuilder.ClearAll
-//  for section := Low(TGpSQLSection) to High(TGpSQLSection) do
-//    AST[section].Clear;
+  FAST.Clear;
   Result := Self;
 end; { TGpSQLBuilder.ClearAll }
 
@@ -631,8 +628,7 @@ end; { TGpSQLBuilder.Having }
 
 function TGpSQLBuilder.IsEmpty: boolean;
 begin
-// TODO -oPrimoz Gabrijelcic : implement: TGpSQLBuilder.IsEmpty
-//  Result := FASTSection.IsEmpty;
+  Result := FASTSection.IsEmpty;
 end; { TGpSQLBuilder.IsEmpty }
 
 function TGpSQLBuilder.LeftJoin(const dbName: string): IGpSQLBuilder;
