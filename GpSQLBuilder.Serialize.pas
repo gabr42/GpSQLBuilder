@@ -191,8 +191,14 @@ begin
 end; { TGpSQLSerializer.SerializeColumns }
 
 function TGpSQLSerializer.SerializeGroupBy: string;
+var
+  groupBy: IGpSQLGroupBy;
 begin
-  Result := '';
+  groupBy := FAST.groupBy as IGpSQLGroupBy;
+  if groupBy.IsEmpty then
+    Result := ''
+  else
+    Result := Concatenate(['GROUP BY', SerializeColumns(groupBy.Columns)]);
 end; { TGpSQLSerializer.SerializeGroupBy }
 
 function TGpSQLSerializer.SerializeHaving: string;
@@ -219,7 +225,7 @@ end; { TGpSQLSerializer.SerializeOrderBy }
 
 function TGpSQLSerializer.SerializeSelect: string;
 var
-  select : IGpSQLSelect;
+  select: IGpSQLSelect;
 begin
   select := FAST.Select as IGpSQLSelect;
   if select.IsEmpty then
