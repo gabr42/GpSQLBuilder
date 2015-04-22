@@ -219,16 +219,14 @@ end; { TGpSQLSerializer.SerializeOrderBy }
 
 function TGpSQLSerializer.SerializeSelect: string;
 var
-  columns: IGpSQLColumns;
   select : IGpSQLSelect;
 begin
-  columns := FAST.Select as IGpSQLColumns;
   select := FAST.Select as IGpSQLSelect;
-  if (select.TableName.Name = '') and (columns.Count = 0) then
+  if select.IsEmpty then
     Result := ''
   else
     Result := Concatenate(['SELECT', SerializeSelectQualifiers(select.Qualifiers),
-      SerializeColumns(columns), 'FROM', SerializeName(select.TableName)]);
+      SerializeColumns(select.Columns), 'FROM', SerializeName(select.TableName)]);
 end; { TGpSQLSerializer.SerializeSelect }
 
 function TGpSQLSerializer.SerializeSelectQualifiers(

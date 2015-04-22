@@ -195,10 +195,10 @@ procedure TTestGpSQLBuilder.TestGroupBy;
 const
   CExpected = 'SELECT * FROM Test GROUP BY Column2';
 begin
- SQL
-   .Select.All
-   .From(DB_TEST)
-   .GroupBy(COL_2);
+  SQL
+    .Select.All
+    .From(DB_TEST)
+    .GroupBy(COL_2);
   Assert.AreEqual(CExpected, SQL.AsString);
 end;
 
@@ -206,11 +206,11 @@ procedure TTestGpSQLBuilder.TestGroupByHaving;
 const
   CExpected = 'SELECT * FROM Test GROUP BY Column2 HAVING (Column2 > 0)';
 begin
- SQL
-   .Select.All
-   .From(DB_TEST)
-   .GroupBy(COL_2)
-   .Having([COL_2, '> 0']);
+  SQL
+    .Select.All
+    .From(DB_TEST)
+    .GroupBy(COL_2)
+    .Having([COL_2, '> 0']);
   Assert.AreEqual(CExpected, SQL.AsString);
 end;
 

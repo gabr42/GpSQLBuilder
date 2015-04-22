@@ -236,6 +236,7 @@ type
   var
     FActiveSection: TGpSQLSection;
     FAST          : IGpSQLAST;
+    FASTColumns   : IGpSQLColumns;
     FASTSection   : IGpSQLSection;
     FASTName      : IGpSQLName;
   strict protected
@@ -542,13 +543,11 @@ begin
 end; { TGpSQLBuilder.ClearAll }
 
 function TGpSQLBuilder.Column(const colName: string): IGpSQLBuilder;
-var
-  sqlColumns: IGpSQLColumns;
 begin
-  if Supports(FASTSection, IGpSQLColumns, sqlColumns) then begin
+  if assigned(FASTColumns) then begin
     FASTName := CreateSQLName;
     FASTName.Name := colName;
-    sqlColumns.Add(FASTName);
+    FASTColumns.Add(FASTName);
   end
   else
     raise Exception.CreateFmt('Current section [%s] does not support COLUMN.',
@@ -598,7 +597,8 @@ end; { TGpSQLBuilder.First }
 function TGpSQLBuilder.From(const dbName: string): IGpSQLBuilder;
 begin
   AssertSection([secSelect]);
-  (FASTSection as IGpSQLSelect).TableName.Name := dbName;
+  FASTName := (FASTSection as IGpSQLSelect).TableName;
+  FASTName.Name := dbName;
   Result := Self;
 end; { TGpSQLBuilder.From }
 
@@ -647,6 +647,7 @@ begin
   FASTName.Name := dbName;
   FAST.Joins.Add(join);
   FASTSection := join;
+  FASTColumns := nil;
   Result := Self;
 end; { TGpSQLBuilder.LeftJoin }
 
@@ -703,12 +704,32 @@ end; { TGpSQLBuilder.Select }
 procedure TGpSQLBuilder.SelectSection(section: TGpSQLSection);
 begin
   case section of
-    secSelect:  FASTSection := FAST.Select;
-//    secJoin:    FASTSection := FAST.Joins;
-    secWhere:   FASTSection := FAST.Where;
-    secGroupBy: FASTSection := FAST.GroupBy;
-    secHaving:  FASTSection := FAST.Having;
-    secOrderBy: FASTSection := FAST.OrderBy;
+    secSelect:
+      begin
+        FASTSection := FAST.Select;
+        FASTColumns := FAST.Select.Columns;
+      end;
+    secWhere:
+      begin
+        FASTSection := FAST.Where;
+        FASTColumns := nil;
+      end;
+    secGroupBy:
+      begin
+        FASTSection := FAST.GroupBy;
+        FASTColumns := FAST.GroupBy.Columns;
+      end;
+    secHaving:
+      begin
+        FASTSection := FAST.Having;
+        FASTColumns := nil;
+      end;
+    secOrderBy:
+      begin
+        FASTSection := FAST.OrderBy;
+        FASTColumns := FAST.OrderBy.Columns;
+      end;
+    else raise Exception.Create('TGpSQLBuilder.SelectSection: Unknown section');
   end;
   FActiveSection := section;
 end; { TGpSQLBuilder.SelectSection }
