@@ -63,7 +63,8 @@ type
   ['{DA9157F6-3526-4DA4-8CD3-115DFE7719B3}']
     function  GetColumns(idx: integer): IGpSQLName;
   //
-    procedure Add(const name: IGpSQLName);
+    function  Add: IGpSQLName; overload;
+    procedure Add(const name: IGpSQLName); overload;
     procedure Clear;
     function  Count: integer;
     function  IsEmpty: boolean;
@@ -93,7 +94,8 @@ type
   IGpSQLSelectQualifiers = interface ['{522F34BC-C916-45B6-9DC2-E800FEC7661A}']
     function GetQualifier(idx: integer): IGpSQLSelectQualifier;
   //
-    procedure Add(qualifier: IGpSQLSelectQualifier);
+    function  Add: IGpSQLSelectQualifier; overload;
+    procedure Add(qualifier: IGpSQLSelectQualifier); overload;
     procedure Clear;
     function  Count: integer;
     function  IsEmpty: boolean;
@@ -132,7 +134,8 @@ type
   end; { IGpSQLJoin }
 
   IGpSQLJoins = interface ['{5C277003-FC57-4DE5-B041-371012A51D82}']
-    procedure Add(const join: IGpSQLJoin);
+    function  Add: IGpSQLJoin; overload;
+    procedure Add(const join: IGpSQLJoin); overload;
   end; { IGpSQLJoins }
 
   IGpSQLWhere = interface(IGpSQLSection) ['{77BD3E41-53DC-4FC7-B0ED-B339564791AA}']
@@ -154,13 +157,19 @@ type
     property Expression: string read GetExpression write SetExpression;
   end; { IGpSQLHaving }
 
-  IGpSQLOrderByColumns = interface(IGpSQLColumns) ['{05ECC702-D102-4D7D-A150-49A7A8787A7C}']
-  end; { IGpSQLOrderByColumns }
+  TGpSQLOrderByDirection = (dirAscending, dirDescending);
+
+  IGpSQLOrderByColumn = interface(IGpSQLName) ['{05ECC702-D102-4D7D-A150-49A7A8787A7C}']
+    function  GetDirection: TGpSQLOrderByDirection;
+    procedure SetDirection(const value: TGpSQLOrderByDirection);
+  //
+    property Direction: TGpSQLOrderByDirection read GetDirection write SetDirection;
+  end; { IGpSQLOrderByColumn }
 
   IGpSQLOrderBy = interface(IGpSQLSection) ['{6BC985B7-219A-4359-9F21-60A985969368}']
-    function GetColumns: IGpSQLOrderByColumns;
+    function GetColumns: IGpSQLColumns;
   //
-    property Columns: IGpSQLOrderByColumns read GetColumns;
+    property Columns: IGpSQLColumns read GetColumns;
   end; { IGpSQLOrderBy }
 
   IGpSQLAST = interface
@@ -179,13 +188,6 @@ type
     property OrderBy: IGpSQLOrderBy read GetOrderBy;
   end; { IGpSQLAST }
 
-  function CreateSQLName: IGpSQLName;
-  function CreateSQLColumns: IGpSQLColumns;
-  function CreateSQLOrderByColumns: IGpSQLOrderByColumns;
-  function CreateSQLSelectQualifier: IGpSQLSelectQualifier;
-  function CreateSQLSelectQualifiers: IGpSQLSelectQualifiers;
-  // TODO -oPrimoz Gabrijelcic : add constructors for other sections
-  function CreateSQLJoin: IGpSQLJoin;
   function CreateSQLAST: IGpSQLAST;
 
 implementation
@@ -220,7 +222,8 @@ type
   public
     constructor Create;
     destructor  Destroy; override;
-    procedure Add(const name: IGpSQLName);
+    function  Add: IGpSQLName; overload; virtual;
+    procedure Add(const name: IGpSQLName); overload; virtual;
     procedure Clear;
     function  Count: integer;
     function  IsEmpty: boolean;
@@ -261,7 +264,8 @@ type
   public
     constructor Create;
     destructor  Destroy; override;
-    procedure Add(qualifier: IGpSQLSelectQualifier);
+    function  Add: IGpSQLSelectQualifier; overload;
+    procedure Add(qualifier: IGpSQLSelectQualifier); overload;
     procedure Clear;
     function  Count: integer;
     function  IsEmpty: boolean;
@@ -314,7 +318,8 @@ type
   public
     constructor Create;
     destructor  Destroy; override;
-    procedure Add(const join: IGpSQLJoin);
+    function  Add: IGpSQLJoin; overload;
+    procedure Add(const join: IGpSQLJoin); overload;
     procedure Clear;
     function  IsEmpty: boolean;
   end; { TGpSQLJoins }
@@ -356,19 +361,31 @@ type
     property Expression: string read GetExpression write SetExpression;
   end; { TGpSQLHaving }
 
-  TGpSQLOrderByColumns = class(TGpSQLColumns, IGpSQLOrderByColumns)
+  TGpSQLOrderByColumn = class(TGpSQLName, IGpSQLOrderByColumn)
+  strict private
+    FDirection: TGpSQLOrderByDirection;
+  strict protected
+    function  GetDirection: TGpSQLOrderByDirection;
+    procedure SetDirection(const value: TGpSQLOrderByDirection);
+  public
+    property Direction: TGpSQLOrderByDirection read GetDirection write SetDirection;
+  end; { TGpSQLOrderByColumn }
+
+  TGpSQLOrderByColumns = class(TGpSQLColumns)
+  public
+    function Add: IGpSQLName; override;
   end; { TGpSQLOrderByColumns }
 
   TGpSQLOrderBy = class(TGpSQLSection, IGpSQLOrderBy)
   strict private
-    FColumns: IGpSQLOrderByColumns;
+    FColumns: IGpSQLColumns;
   strict protected
-    function  GetColumns: IGpSQLOrderByColumns;
+    function  GetColumns: IGpSQLColumns;
   public
     constructor Create;
     procedure Clear; override;
     function  IsEmpty: boolean; override;
-    property Columns: IGpSQLOrderByColumns read GetColumns;
+    property Columns: IGpSQLColumns read GetColumns;
   end; { IGpSQLOrderBy }
 
   TGpSQLAST = class(TInterfacedObject, IGpSQLAST)
@@ -397,36 +414,6 @@ type
   end; { TGpSQLAST }
 
 { exports }
-
-function CreateSQLName: IGpSQLName;
-begin
-  Result := TGpSQLName.Create;
-end; { CreateSQLName }
-
-function CreateSQLColumns: IGpSQLColumns;
-begin
-  Result := TGpSQLColumns.Create;
-end; { CreateSQLColumns }
-
-function CreateSQLOrderByColumns: IGpSQLOrderByColumns;
-begin
-  Result := TGpSQLOrderByColumns.Create;
-end; { CreateSQLOrderByColumns }
-
-function CreateSQLSelectQualifier: IGpSQLSelectQualifier;
-begin
-  Result := TGpSQLSelectQualifier.Create;
-end; { CreateSQLSelectQualifier }
-
-function CreateSQLSelectQualifiers: IGpSQLSelectQualifiers;
-begin
-  Result := TGpSQLSelectQualifiers.Create;
-end; { CreateSQLSelectQualifiers }
-
-function CreateSQLJoin: IGpSQLJoin;
-begin
-  Result := TGpSQLJoin.Create;
-end; { CreateSQLJoin }
 
 function CreateSQLAST: IGpSQLAST;
 begin
@@ -479,6 +466,12 @@ begin
   FreeAndNil(FColumns);
   inherited;
 end; { TGpSQLColumns.Destroy }
+
+function TGpSQLColumns.Add: IGpSQLName;
+begin
+  Result := TGpSQLName.Create;
+  Add(Result);
+end; { TGpSQLColumns.Add }
 
 procedure TGpSQLColumns.Add(const name: IGpSQLName);
 begin
@@ -554,6 +547,12 @@ begin
   inherited;
 end; { TGpSQLSelectQualifiers.Destroy }
 
+function TGpSQLSelectQualifiers.Add: IGpSQLSelectQualifier;
+begin
+  Result := TGpSQLSelectQualifier.Create;
+  Add(Result);
+end; { TGpSQLSelectQualifiers.Add }
+
 procedure TGpSQLSelectQualifiers.Add(qualifier: IGpSQLSelectQualifier);
 begin
   FQualifiers.Add(qualifier);
@@ -590,9 +589,9 @@ end; { TGpSQLSelect.Clear }
 constructor TGpSQLSelect.Create;
 begin
   inherited Create('Select');
-  FColumns := CreateSQLColumns;
-  FQualifiers := CreateSQLSelectQualifiers;
-  FTableName := CreateSQLName;
+  FColumns := TGpSQLColumns.Create;
+  FQualifiers := TGpSQLSelectQualifiers.Create;
+  FTableName := TGpSQLName.Create;
 end; { TGpSQLSelect.Create }
 
 function TGpSQLSelect.GetColumns: IGpSQLColumns;
@@ -631,7 +630,7 @@ end; { TGpSQLJoin.Clear }
 constructor TGpSQLJoin.Create;
 begin
   inherited Create('Join');
-  FJoinedTable := CreateSQLName;
+  FJoinedTable := TGpSQLName.Create;
 end; { TGpSQLJoin.Create }
 
 function TGpSQLJoin.GetCondition: IGpSQLExpression;
@@ -698,6 +697,12 @@ begin
   FJoins.Add(join);
 end; { TGpSQLJoins.Add }
 
+function TGpSQLJoins.Add: IGpSQLJoin;
+begin
+  Result := TGpSQLJoin.Create;
+  Add(Result);
+end; { TGpSQLJoins.Add }
+
 { TGpSQLWhere }
 
 procedure TGpSQLWhere.Clear;
@@ -730,7 +735,7 @@ end; { TGpSQLGroupBy.Clear }
 constructor TGpSQLGroupBy.Create;
 begin
   inherited Create('GroupBy');
-  FColumns := CreateSQLColumns;
+  FColumns := TGpSQLColumns.Create;
 end; { TGpSQLGroupBy.Create }
 
 function TGpSQLGroupBy.GetColumns: IGpSQLColumns;
@@ -772,20 +777,40 @@ begin
   FExpression := value;
 end; { TGpSQLHaving.SetExpression }
 
+{ TGpSQLOrderByColumn }
+
+function TGpSQLOrderByColumn.GetDirection: TGpSQLOrderByDirection;
+begin
+  Result := FDirection;
+end; { TGpSQLOrderByColumn.GetDirection }
+
+procedure TGpSQLOrderByColumn.SetDirection(const value: TGpSQLOrderByDirection);
+begin
+  FDirection := value;
+end; { TGpSQLOrderByColumn.SetDirection }
+
+{ TGpSQLOrderByColumns }
+
+function TGpSQLOrderByColumns.Add: IGpSQLName;
+begin
+  Result := TGpSQLOrderByColumn.Create;
+  Add(Result);
+end; { TGpSQLOrderByColumns.Add }
+
 { TGpSQLOrderBy }
+
+constructor TGpSQLOrderBy.Create;
+begin
+  inherited Create('OrderBy');
+  FColumns := TGpSQLOrderByColumns.Create;
+end; { TGpSQLOrderBy.Create }
 
 procedure TGpSQLOrderBy.Clear;
 begin
   Columns.Clear;
 end; { TGpSQLOrderBy.Clear }
 
-constructor TGpSQLOrderBy.Create;
-begin
-  inherited Create('OrderBy');
-  FColumns := CreateSQLOrderByColumns;
-end; { TGpSQLOrderBy.Create }
-
-function TGpSQLOrderBy.GetColumns: IGpSQLOrderByColumns;
+function TGpSQLOrderBy.GetColumns: IGpSQLColumns;
 begin
   Result := FColumns;
 end; { TGpSQLOrderBy.GetColumns }

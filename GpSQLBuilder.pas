@@ -545,9 +545,8 @@ end; { TGpSQLBuilder.ClearAll }
 function TGpSQLBuilder.Column(const colName: string): IGpSQLBuilder;
 begin
   if assigned(FASTColumns) then begin
-    FASTName := CreateSQLName;
+    FASTName := FASTColumns.Add;
     FASTName.Name := colName;
-    FASTColumns.Add(FASTName);
   end
   else
     raise Exception.CreateFmt('Current section [%s] does not support COLUMN.',
@@ -567,8 +566,9 @@ end; { TGpSQLBuilder.Column }
 
 function TGpSQLBuilder.Desc: IGpSQLBuilder;
 begin
-// TODO -oPrimoz Gabrijelcic :
-//  FActiveSection.Add('DESC', stAppend);
+  AssertSection([secOrderBy]);
+  // TODO 1 -oPrimoz Gabrijelcic : Assert at least one column
+  (FASTColumns[FASTColumns.Count - 1] as IGpSQLOrderByColumn).Direction := dirDescending;
   Result := Self;
 end; { TGpSQLBuilder.Desc }
 
@@ -587,10 +587,9 @@ var
   qual: IGpSQLSelectQualifier;
 begin
   AssertSection([secSelect]);
-  qual := CreateSQLSelectQualifier;
+  qual := (FASTSection as IGpSQLSelect).Qualifiers.Add;
   qual.Qualifier := sqFirst;
   qual.Value := num;
-  (FASTSection as IGpSQLSelect).Qualifiers.Add(qual);
   Result := Self;
 end; { TGpSQLBuilder.First }
 
@@ -641,11 +640,10 @@ var
   join: IGpSQLJoin;
 begin
   FActiveSection := secJoin;
-  join := CreateSQLJoin;
+  join := FAST.Joins.Add;
   join.JoinType := jtLeft;
   FASTName := join.JoinedTable;
   FASTName.Name := dbName;
-  FAST.Joins.Add(join);
   FASTSection := join;
   FASTColumns := nil;
   Result := Self;
@@ -739,10 +737,9 @@ var
   qual: IGpSQLSelectQualifier;
 begin
   AssertSection([secSelect]);
-  qual := CreateSQLSelectQualifier;
+  qual := (FASTSection as IGpSQLSelect).Qualifiers.Add;
   qual.Qualifier := sqSkip;
   qual.Value := num;
-  (FASTSection as IGpSQLSelect).Qualifiers.Add(qual);
   Result := Self;
 end; { TGpSQLBuilder.Skip }
 
