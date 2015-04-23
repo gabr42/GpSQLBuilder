@@ -237,12 +237,12 @@ type
     FActiveSection: TGpSQLSection;
     FAST          : IGpSQLAST;
     FASTColumns   : IGpSQLColumns;
+    FASTExpr      : IGpSQLExpression;
     FASTSection   : IGpSQLSection;
     FASTName      : IGpSQLName;
   strict protected
     procedure AssertHaveName;
     procedure AssertSection(sections: TGpSQLSections);
-//    procedure AssertPart(parts: TGpSQLParts);
     function  GetAsString: string;
     function  GetAST: IGpSQLAST;
     procedure SelectSection(section: TGpSQLSection);
@@ -474,7 +474,26 @@ begin
 end; { TGpSQLBuilder.&And }
 
 function TGpSQLBuilder.&And(const expression: string): IGpSQLBuilder;
+var
+  node: IGpSQLExpression;
 begin
+  // TODO 1 -oPrimoz Gabrijelcic : Assert FASTExpr is assigned
+  if FASTExpr.IsEmpty then
+    FASTExpr.Term := expression
+  else begin
+    node := FASTExpr.New;
+    node.Left := FASTExpr;
+    node.Operation := opAnd;
+    node.Right := FASTExpr.New;
+    node.Right.Term := expression;
+    FASTExpr := node;
+    case FActiveSection of
+      secJoin:   (FASTSection as IGpSQLJoin).Condition := FASTExpr;
+      secWhere:  (FASTSection as IGpSQLWhere).Expression := FASTExpr;
+      secHaving: (FASTSection as IGpSQLHaving).Expression := FASTExpr;
+    end;
+  end;
+
   // TODO 1 -oPrimoz Gabrijelcic : implement: TGpSQLBuilder
 //  FActiveSection.Add(['(', expression, ')'], stAnd);
   Result := Self;
@@ -508,12 +527,6 @@ begin
   if not (FActiveSection in sections) then
     raise Exception.Create('TGpSQLBuilder: Not supported in this section');
 end; { TGpSQLBuilder.AssertSection }
-
-//procedure TGpSQLBuilder.AssertPart(parts: TGpSQLParts);
-//begin
-//  if not (FLastPart in parts) then
-//    raise Exception.Create('TGpSQLBuilder: Not supported in this part');
-//end; { TGpSQLBuilder.AssertPart }
 
 function TGpSQLBuilder.&Case(const expression: string = ''): IGpSQLBuilderCase;
 begin
@@ -642,6 +655,7 @@ begin
   FASTName.Name := dbName;
   FASTSection := join;
   FASTColumns := nil;
+  FASTExpr := join.Condition;
   Result := Self;
 end; { TGpSQLBuilder.LeftJoin }
 
@@ -702,26 +716,31 @@ begin
       begin
         FASTSection := FAST.Select;
         FASTColumns := FAST.Select.Columns;
+        FASTExpr := nil;
       end;
     secWhere:
       begin
         FASTSection := FAST.Where;
         FASTColumns := nil;
+        FASTExpr := FAST.Where.Expression;
       end;
     secGroupBy:
       begin
         FASTSection := FAST.GroupBy;
         FASTColumns := FAST.GroupBy.Columns;
+        FASTExpr := nil;
       end;
     secHaving:
       begin
         FASTSection := FAST.Having;
         FASTColumns := nil;
+        FASTExpr := FAST.Having.Expression;
       end;
     secOrderBy:
       begin
         FASTSection := FAST.OrderBy;
         FASTColumns := FAST.OrderBy.Columns;
+        FASTExpr := nil;
       end;
     else raise Exception.Create('TGpSQLBuilder.SelectSection: Unknown section');
   end;

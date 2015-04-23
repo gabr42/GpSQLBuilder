@@ -145,8 +145,8 @@ end;
 
 procedure TTestGpSQLBuilder.TestDoubleLeftJoin;
 const
-  CExpected = 'SELECT * FROM Test LEFT JOIN Detail ON (Column1 = DetailID) ' +
-    'LEFT JOIN Sub ON (DetailID = SubID)';
+  CExpected = 'SELECT * FROM Test LEFT JOIN Detail ON Column1 = DetailID ' +
+    'LEFT JOIN Sub ON DetailID = SubID';
 begin
   SQL
     .Select.All
@@ -204,7 +204,7 @@ end;
 
 procedure TTestGpSQLBuilder.TestGroupByHaving;
 const
-  CExpected = 'SELECT * FROM Test GROUP BY Column2 HAVING (Column2 > 0)';
+  CExpected = 'SELECT * FROM Test GROUP BY Column2 HAVING Column2 > 0';
 begin
   SQL
     .Select.All
@@ -216,7 +216,7 @@ end;
 
 procedure TTestGpSQLBuilder.TestLeftJoin;
 const
-  CExpected = 'SELECT * FROM Test LEFT JOIN Detail ON (Column1 = DetailID)';
+  CExpected = 'SELECT * FROM Test LEFT JOIN Detail ON Column1 = DetailID';
 begin
   SQL
     .Select.All
@@ -227,7 +227,7 @@ end;
 
 procedure TTestGpSQLBuilder.TestLeftJoin2;
 const
-  CExpected = 'SELECT * FROM Test LEFT JOIN Detail ON (Column1 = DetailID)';
+  CExpected = 'SELECT * FROM Test LEFT JOIN Detail ON Column1 = DetailID';
 begin
   SQL
     .Select.All
@@ -238,7 +238,7 @@ end;
 
 procedure TTestGpSQLBuilder.TestLeftJoinAlias;
 const
-  CExpected = 'SELECT * FROM Test LEFT JOIN Detail AS DetailAlias ON (Column1 = DetailID)';
+  CExpected = 'SELECT * FROM Test LEFT JOIN Detail AS DetailAlias ON Column1 = DetailID';
 begin
   SQL
     .Select.All
@@ -470,7 +470,7 @@ end;
 
 procedure TTestGpSQLBuilder.TestSelectWhere;
 const
-  CExpected = 'SELECT * FROM Test WHERE (Column2 > 0)';
+  CExpected = 'SELECT * FROM Test WHERE Column2 > 0';
 begin
   SQL
     .Select.All

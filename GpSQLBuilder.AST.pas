@@ -71,6 +71,27 @@ type
     property Columns[idx: integer]: IGpSQLName read GetColumns; default;
   end; { IGpSQLColumns }
 
+  TGpSQLExpressionOperation = (opNone, opAnd, opOr);
+
+  IGpSQLExpression = interface ['{011D9FD2-AE54-4720-98AB-085D6F6B421E}']
+    function  GetLeft: IGpSQLExpression;
+    function  GetOperation: TGpSQLExpressionOperation;
+    function  GetRight: IGpSQLExpression;
+    function  GetTerm: string;
+    procedure SetLeft(const value: IGpSQLExpression);
+    procedure SetOperation(const value: TGpSQLExpressionOperation);
+    procedure SetRight(const value: IGpSQLExpression);
+    procedure SetTerm(const value: string);
+  //
+    procedure Clear;
+    function  IsEmpty: boolean;
+    function  New: IGpSQLExpression;
+    property Term: string read GetTerm write SetTerm;
+    property Operation: TGpSQLExpressionOperation read GetOperation write SetOperation;
+    property Left: IGpSQLExpression read GetLeft write SetLeft;
+    property Right: IGpSQLExpression read GetRight write SetRight;
+  end; { IGpSQLExpression }
+
   IGpSQLSection = interface ['{BE0A0FF9-AD70-40C5-A1C2-7FA2F7061153}']
     function  GetName: string;
   //
@@ -113,12 +134,7 @@ type
     property TableName: IGpSQLName read GetTableName write SetTableName;
   end; { IGpSQLSelect }
 
-  IGpSQLExpression = interface ['{011D9FD2-AE54-4720-98AB-085D6F6B421E}']
-    procedure Clear;
-    function  IsEmpty: boolean;
-  end; { IGpSQLExpression }
-
-  TGpSQLJoinType = (jtLeft, jtLeftOuter, jtRight, jtRightOuter); // TODO -oPrimoz Gabrijelcic : Is that all?
+  TGpSQLJoinType = (jtInner, jtLeft, jtRight, jtFull);
 
   IGpSQLJoin = interface(IGpSQLSection) ['{CD8AD84D-2FCC-4EBD-A83A-A637CF9D188E}']
     function  GetCondition: IGpSQLExpression;
@@ -134,14 +150,22 @@ type
   end; { IGpSQLJoin }
 
   IGpSQLJoins = interface ['{5C277003-FC57-4DE5-B041-371012A51D82}']
+    function  GetJoins(idx: integer): IGpSQLJoin;
+    procedure SetJoins(idx: integer; const value: IGpSQLJoin);
+  //
     function  Add: IGpSQLJoin; overload;
     procedure Add(const join: IGpSQLJoin); overload;
+    procedure Clear;
+    function  Count: integer;
+    function  IsEmpty: boolean;
+    property Joins[idx: integer]: IGpSQLJoin read GetJoins write SetJoins; default;
   end; { IGpSQLJoins }
 
   IGpSQLWhere = interface(IGpSQLSection) ['{77BD3E41-53DC-4FC7-B0ED-B339564791AA}']
-    function GetExpression: IGpSQLExpression;
+    function  GetExpression: IGpSQLExpression;
+    procedure SetExpression(const value: IGpSQLExpression);
   //
-    property Expression: IGpSQLExpression read GetExpression;
+    property Expression: IGpSQLExpression read GetExpression write SetExpression;
   end; { IGpSQLWhere }
 
   IGpSQLGroupBy = interface(IGpSQLSection) ['{B8B50CF2-2E2A-4C3C-B9B6-D6B0BE92502C}']
@@ -151,10 +175,10 @@ type
   end; { IGpSQLGroupBy }
 
   IGpSQLHaving = interface(IGpSQLSection) ['{BF1459A7-C665-4983-A724-A7002F6D201F}']
-    function  GetExpression: string;
-    procedure SetExpression(const value: string);
+    function  GetExpression: IGpSQLExpression;
+    procedure SetExpression(const value: IGpSQLExpression);
   //
-    property Expression: string read GetExpression write SetExpression;
+    property Expression: IGpSQLExpression read GetExpression write SetExpression;
   end; { IGpSQLHaving }
 
   TGpSQLOrderByDirection = (dirAscending, dirDescending);
@@ -180,6 +204,8 @@ type
     function GetSelect: IGpSQLSelect;
     function GetWhere: IGpSQLWhere;
   //
+    procedure Clear;
+    function  IsEmpty: boolean;
     property Select: IGpSQLSelect read GetSelect;
     property Joins: IGpSQLJoins read GetJoins;
     property Where: IGpSQLWhere read GetWhere;
@@ -229,6 +255,31 @@ type
     function  IsEmpty: boolean;
     property Columns[idx: integer]: IGpSQLName read GetColumns; default;
   end; { TGpSQLColumns }
+
+  TGpSQLExpression = class(TInterfacedObject, IGpSQLExpression)
+  strict private
+    FLeft     : IGpSQLExpression;
+    FOperation: TGpSQLExpressionOperation;
+    FRight    : IGpSQLExpression;
+    FTerm     : string;
+  strict protected
+    function  GetLeft: IGpSQLExpression;
+    function  GetOperation: TGpSQLExpressionOperation;
+    function  GetRight: IGpSQLExpression;
+    function  GetTerm: string;
+    procedure SetLeft(const value: IGpSQLExpression);
+    procedure SetOperation(const value: TGpSQLExpressionOperation);
+    procedure SetRight(const value: IGpSQLExpression);
+    procedure SetTerm(const value: string);
+  public
+    procedure Clear;
+    function  IsEmpty: boolean;
+    function  New: IGpSQLExpression;
+    property Term: string read GetTerm write SetTerm;
+    property Operation: TGpSQLExpressionOperation read GetOperation write SetOperation;
+    property Left: IGpSQLExpression read GetLeft write SetLeft;
+    property Right: IGpSQLExpression read GetRight write SetRight;
+  end; { TGpSQLExpression }
 
   TGpSQLSection = class(TInterfacedObject, IGpSQLSection)
   strict private
@@ -315,13 +366,18 @@ type
   TGpSQLJoins = class(TInterfacedObject, IGpSQLJoins)
   strict private
     FJoins: TList<IGpSQLJoin>;
+  strict protected
+    function  GetJoins(idx: integer): IGpSQLJoin;
+    procedure SetJoins(idx: integer; const value: IGpSQLJoin);
   public
     constructor Create;
     destructor  Destroy; override;
     function  Add: IGpSQLJoin; overload;
     procedure Add(const join: IGpSQLJoin); overload;
     procedure Clear;
+    function  Count: integer;
     function  IsEmpty: boolean;
+    property Joins[idx: integer]: IGpSQLJoin read GetJoins write SetJoins; default;
   end; { TGpSQLJoins }
 
   TGpSQLWhere = class(TGpSQLSection, IGpSQLWhere)
@@ -329,11 +385,12 @@ type
     FExpression: IGpSQLExpression;
   strict protected
     function  GetExpression: IGpSQLExpression;
+    procedure SetExpression(const value: IGpSQLExpression);
   public
     constructor Create;
     procedure Clear; override;
     function  IsEmpty: boolean; override;
-    property Expression: IGpSQLExpression read GetExpression;
+    property Expression: IGpSQLExpression read GetExpression write SetExpression;
   end; { TGpSQLWhere }
 
   TGpSQLGroupBy = class(TGpSQLSection, IGpSQLGroupBy)
@@ -350,15 +407,15 @@ type
 
   TGpSQLHaving = class(TGpSQLSection, IGpSQLHaving)
   strict private
-    FExpression: string;
+    FExpression: IGpSQLExpression;
   strict protected
-    function  GetExpression: string;
-    procedure SetExpression(const value: string);
+    function  GetExpression: IGpSQLExpression;
+    procedure SetExpression(const value: IGpSQLExpression);
   public
     constructor Create;
     procedure Clear; override;
     function  IsEmpty: boolean; override;
-    property Expression: string read GetExpression write SetExpression;
+    property Expression: IGpSQLExpression read GetExpression write SetExpression;
   end; { TGpSQLHaving }
 
   TGpSQLOrderByColumn = class(TGpSQLName, IGpSQLOrderByColumn)
@@ -405,6 +462,8 @@ type
     function GetWhere: IGpSQLWhere;
   public
     constructor Create;
+    procedure Clear;
+    function  IsEmpty: boolean;
     property Select: IGpSQLSelect read GetSelect;
     property Joins: IGpSQLJoins read GetJoins;
     property Where: IGpSQLWhere read GetWhere;
@@ -497,6 +556,66 @@ function TGpSQLColumns.IsEmpty: boolean;
 begin
   Result := (Count = 0);
 end; { TGpSQLColumns.IsEmpty }
+
+{ TGpSQLExpression }
+
+procedure TGpSQLExpression.Clear;
+begin
+  FOperation := opNone;
+  FTerm := '';
+  FLeft := nil;
+  FRight := nil;
+end; { TGpSQLExpression.Clear }
+
+function TGpSQLExpression.GetLeft: IGpSQLExpression;
+begin
+  Result := FLeft;
+end; { TGpSQLExpression.GetLeft }
+
+function TGpSQLExpression.GetOperation: TGpSQLExpressionOperation;
+begin
+  Result := FOperation;
+end; { TGpSQLExpression.GetOperation }
+
+function TGpSQLExpression.GetRight: IGpSQLExpression;
+begin
+  Result := FRight;
+end; { TGpSQLExpression.GetRight }
+
+function TGpSQLExpression.GetTerm: string;
+begin
+  Result := FTerm;
+end; { TGpSQLExpression.GetTerm }
+
+function TGpSQLExpression.IsEmpty: boolean;
+begin
+  Result := (FOperation = opNone) and (FTerm = '');
+end; { TGpSQLExpression.IsEmpty }
+
+function TGpSQLExpression.New: IGpSQLExpression;
+begin
+  Result := TGpSQLExpression.Create;
+end; { TGpSQLExpression.New }
+
+procedure TGpSQLExpression.SetLeft(const value: IGpSQLExpression);
+begin
+  FLeft := value;
+end; { TGpSQLExpression.SetLeft }
+
+procedure TGpSQLExpression.SetOperation(const value: TGpSQLExpressionOperation);
+begin
+  FOperation := value;
+end; { TGpSQLExpression.SetOperation }
+
+procedure TGpSQLExpression.SetRight(const value: IGpSQLExpression);
+begin
+  FRight := value;
+end; { TGpSQLExpression.SetRight }
+
+procedure TGpSQLExpression.SetTerm(const value: string);
+begin
+  FTerm := value;
+end; { TGpSQLExpression.SetTerm }
 
 { TGpSQLSection }
 
@@ -631,6 +750,7 @@ constructor TGpSQLJoin.Create;
 begin
   inherited Create('Join');
   FJoinedTable := TGpSQLName.Create;
+  FCondition := TGpSQLExpression.Create;
 end; { TGpSQLJoin.Create }
 
 function TGpSQLJoin.GetCondition: IGpSQLExpression;
@@ -703,6 +823,21 @@ begin
   Add(Result);
 end; { TGpSQLJoins.Add }
 
+function TGpSQLJoins.Count: integer;
+begin
+  Result := FJoins.Count;
+end; { TGpSQLJoins.Count }
+
+function TGpSQLJoins.GetJoins(idx: integer): IGpSQLJoin;
+begin
+  Result := FJoins[idx];
+end; { TGpSQLJoins.GetJoins }
+
+procedure TGpSQLJoins.SetJoins(idx: integer; const value: IGpSQLJoin);
+begin
+  FJoins[idx] := value;
+end; { TGpSQLJoins.SetJoins }
+
 { TGpSQLWhere }
 
 procedure TGpSQLWhere.Clear;
@@ -713,6 +848,7 @@ end; { TGpSQLWhere.Clear }
 constructor TGpSQLWhere.Create;
 begin
   inherited Create('Where');
+  FExpression := TGpSQLExpression.Create;
 end; { TGpSQLWhere.Create }
 
 function TGpSQLWhere.GetExpression: IGpSQLExpression;
@@ -724,6 +860,11 @@ function TGpSQLWhere.IsEmpty: boolean;
 begin
   Result := Expression.IsEmpty;
 end; { TGpSQLWhere.IsEmpty }
+
+procedure TGpSQLWhere.SetExpression(const value: IGpSQLExpression);
+begin
+  FExpression := value;
+end; { TGpSQLWhere.SetExpression }
 
 { TGpSQLGroupBy }
 
@@ -752,27 +893,28 @@ end; { TGpSQLGroupBy.IsEmpty }
 
 procedure TGpSQLHaving.Clear;
 begin
-  Expression := '';
+  Expression.Clear;
 end; { TGpSQLHaving.Clear }
 
 constructor TGpSQLHaving.Create;
 begin
   inherited Create('Having');
+  FExpression := TGpSQLExpression.Create;
 end; { TGpSQLHaving.Create }
 
-function TGpSQLHaving.GetExpression: string;
+function TGpSQLHaving.GetExpression: IGpSQLExpression;
 begin
   Result := FExpression;
 end; { TGpSQLHaving.GetExpression }
 
 function TGpSQLHaving.IsEmpty: boolean;
 begin
-  Result := (Expression = '');
+  Result := Expression.IsEmpty;
 end; { TGpSQLHaving.IsEmpty }
 
 { TGpSQLHaving }
 
-procedure TGpSQLHaving.SetExpression(const value: string);
+procedure TGpSQLHaving.SetExpression(const value: IGpSQLExpression);
 begin
   FExpression := value;
 end; { TGpSQLHaving.SetExpression }
@@ -822,6 +964,16 @@ end; { TGpSQLOrderBy.IsEmpty }
 
 { TGpSQLAST }
 
+procedure TGpSQLAST.Clear;
+begin
+  Select.Clear;
+  Joins.Clear;
+  Where.Clear;
+  GroupBy.Clear;
+  Having.Clear;
+  OrderBy.Clear;
+end; { TGpSQLAST.Clear }
+
 constructor TGpSQLAST.Create;
 begin
   inherited;
@@ -862,5 +1014,16 @@ function TGpSQLAST.GetWhere: IGpSQLWhere;
 begin
   Result := FWhere;
 end; { TGpSQLAST.GetWhere }
+
+function TGpSQLAST.IsEmpty: boolean;
+begin
+  Result :=
+    Select.IsEmpty and
+    Joins.IsEmpty and
+    Where.IsEmpty and
+    GroupBy.IsEmpty and
+    Having.IsEmpty and
+    OrderBy.IsEmpty;
+end; { TGpSQLAST.IsEmpty }
 
 end.

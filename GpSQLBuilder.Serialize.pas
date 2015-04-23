@@ -68,12 +68,14 @@ type
     FAST: IGpSQLAST;
   strict protected
     function  AddToList(const aList, delim, newElement: string): string;
-    function Concatenate(const elements: array of string; delimiter: string = ' '): string;
+    function  Concatenate(const elements: array of string; delimiter: string = ' '): string;
     function  SerializeColumns(const columns: IGpSQLColumns): string;
     function  SerializeDirection(direction: TGpSQLOrderByDirection): string;
+    function  SerializeExpression(const expression: IGpSQLExpression): string;
     function  SerializeGroupBy: string;
     function  SerializeHaving: string;
-    function  SerializeLeftJoins: string;
+    function SerializeJoins: string;
+    function SerializeJoinType(const join: IGpSQLJoin): string;
     function  SerializeName(const name: IGpSQLName): string;
     function  SerializeOrderBy: string;
     function  SerializeSelect: string;
@@ -162,7 +164,7 @@ function TGpSQLSerializer.AsString: string;
 begin
   Result := Concatenate([
     SerializeSelect,
-    SerializeLeftJoins,
+    SerializeJoins,
     SerializeWhere,
     SerializeGroupBy,
     SerializeHaving,
@@ -202,26 +204,67 @@ begin
   end;
 end; { TGpSQLSerializer.SerializeDirection }
 
-function TGpSQLSerializer.SerializeGroupBy: string;
-var
-  groupBy: IGpSQLGroupBy;
+function TGpSQLSerializer.SerializeExpression(const expression: IGpSQLExpression): string;
 begin
-  groupBy := FAST.groupBy as IGpSQLGroupBy;
-  if groupBy.IsEmpty then
+  if expression.IsEmpty then
     Result := ''
   else
-    Result := Concatenate(['GROUP BY', SerializeColumns(groupBy.Columns)]);
+    case expression.Operation of
+      opNone: Result := expression.Term;
+      opAnd:  Result := Concatenate([
+                          '(' + SerializeExpression(expression.Left) + ')',
+                          'AND',
+                          '(' + SerializeExpression(expression.Right) + ')'
+                        ]);
+      opOr:   Result := Concatenate([
+                          '(' + SerializeExpression(expression.Left) + ')',
+                          'OR',
+                          '(' + SerializeExpression(expression.Right) + ')'
+                        ]);
+      else raise Exception.Create('TGpSQLSerializer.SerializeExpression: Unknown operation');
+    end;
+end; { TGpSQLSerializer.SerializeExpression }
+
+function TGpSQLSerializer.SerializeGroupBy: string;
+begin
+  if FAST.GroupBy.IsEmpty then
+    Result := ''
+  else
+    Result := Concatenate(['GROUP BY', SerializeColumns(FAST.GroupBy.Columns)]);
 end; { TGpSQLSerializer.SerializeGroupBy }
 
 function TGpSQLSerializer.SerializeHaving: string;
 begin
-  Result := '';
+  if FAST.Having.IsEmpty then
+    Result := ''
+  else
+    Result := Concatenate(['HAVING', SerializeExpression(FAST.Having.Expression)]);
 end; { TGpSQLSerializer.SerializeHaving }
 
-function TGpSQLSerializer.SerializeLeftJoins: string;
+function TGpSQLSerializer.SerializeJoins: string;
+var
+  iJoin: integer;
+  join : IGpSQLJoin;
 begin
   Result := '';
-end; { TGpSQLSerializer.SerializeLeftJoins }
+  for iJoin := 0 to FAST.Joins.Count - 1 do begin
+    join := FAST.Joins[iJoin];
+    Result := Concatenate([Result, SerializeJoinType(join), 'JOIN',
+       SerializeName(join.JoinedTable),
+      'ON', SerializeExpression(join.Condition)]);
+  end;
+end; { TGpSQLSerializer.SerializeJoins }
+
+function TGpSQLSerializer.SerializeJoinType(const join: IGpSQLJoin): string;
+begin
+  case join.JoinType of
+    jtInner: Result := 'INNER';
+    jtLeft:  Result := 'LEFT';
+    jtRight: Result := 'RIGHT';
+    jtFull:  Result := 'FULL';
+    else raise Exception.Create('Error Message');
+  end;
+end; { TGpSQLSerializer.SerializeJoinType }
 
 function TGpSQLSerializer.SerializeName(const name: IGpSQLName): string;
 begin
@@ -231,26 +274,20 @@ begin
 end; { TGpSQLSerializer.SerializeName }
 
 function TGpSQLSerializer.SerializeOrderBy: string;
-var
-  orderBy: IGpSQLOrderBy;
 begin
-  orderBy := FAST.OrderBy as IGpSQLOrderBy;
-  if orderBy.IsEmpty then
+  if FAST.OrderBy.IsEmpty then
     Result := ''
   else
-    Result := Concatenate(['ORDER BY', SerializeColumns(orderBy.Columns)]);
+    Result := Concatenate(['ORDER BY', SerializeColumns(FAST.OrderBy.Columns)]);
 end; { TGpSQLSerializer.SerializeOrderBy }
 
 function TGpSQLSerializer.SerializeSelect: string;
-var
-  select: IGpSQLSelect;
 begin
-  select := FAST.Select as IGpSQLSelect;
-  if select.IsEmpty then
+  if FAST.Select.IsEmpty then
     Result := ''
   else
-    Result := Concatenate(['SELECT', SerializeSelectQualifiers(select.Qualifiers),
-      SerializeColumns(select.Columns), 'FROM', SerializeName(select.TableName)]);
+    Result := Concatenate(['SELECT', SerializeSelectQualifiers(FAST.Select.Qualifiers),
+      SerializeColumns(FAST.Select.Columns), 'FROM', SerializeName(FAST.Select.TableName)]);
 end; { TGpSQLSerializer.SerializeSelect }
 
 function TGpSQLSerializer.SerializeSelectQualifiers(
@@ -269,7 +306,10 @@ end; { TGpSQLSerializer.SerializeSelectQualifiers }
 
 function TGpSQLSerializer.SerializeWhere: string;
 begin
-  Result := '';
+  if FAST.Where.IsEmpty then
+    Result := ''
+  else
+    Result := Concatenate(['WHERE', SerializeExpression(FAST.Where.Expression)]);
 end; { TGpSQLSerializer.SerializeWhere }
 
 end.
