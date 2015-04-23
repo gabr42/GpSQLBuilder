@@ -362,7 +362,7 @@ procedure TTestGpSQLBuilder.TestSectionEmpty3;
 begin
   SQL.Select.All;
   SQL.Select.Clear;
-  SQL.From(DB_TEST);
+  SQL.GroupBy(COL_1);
   Assert.IsTrue(SQL.Select.IsEmpty);
 end;
 

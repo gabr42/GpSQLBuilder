@@ -71,11 +71,11 @@ type
     function  Concatenate(const elements: array of string; delimiter: string = ' '): string;
     function  SerializeColumns(const columns: IGpSQLColumns): string;
     function  SerializeDirection(direction: TGpSQLOrderByDirection): string;
-    function  SerializeExpression(const expression: IGpSQLExpression): string;
+    function  SerializeExpression(const expression: IGpSQLExpression; addParens: boolean = false): string;
     function  SerializeGroupBy: string;
     function  SerializeHaving: string;
-    function SerializeJoins: string;
-    function SerializeJoinType(const join: IGpSQLJoin): string;
+    function  SerializeJoins: string;
+    function  SerializeJoinType(const join: IGpSQLJoin): string;
     function  SerializeName(const name: IGpSQLName): string;
     function  SerializeOrderBy: string;
     function  SerializeSelect: string;
@@ -204,23 +204,27 @@ begin
   end;
 end; { TGpSQLSerializer.SerializeDirection }
 
-function TGpSQLSerializer.SerializeExpression(const expression: IGpSQLExpression): string;
+function TGpSQLSerializer.SerializeExpression(const expression: IGpSQLExpression;
+  addParens: boolean): string;
 begin
   if expression.IsEmpty then
     Result := ''
   else
     case expression.Operation of
-      opNone: Result := expression.Term;
+      opNone: if addParens then
+                Result := '(' + expression.Term + ')'
+              else
+                Result := expression.Term;
       opAnd:  Result := Concatenate([
-                          '(' + SerializeExpression(expression.Left) + ')',
+                          SerializeExpression(expression.Left, true),
                           'AND',
-                          '(' + SerializeExpression(expression.Right) + ')'
+                          SerializeExpression(expression.Right, true)
                         ]);
-      opOr:   Result := Concatenate([
-                          '(' + SerializeExpression(expression.Left) + ')',
+      opOr:   Result := '(' + Concatenate([
+                          SerializeExpression(expression.Left, true),
                           'OR',
-                          '(' + SerializeExpression(expression.Right) + ')'
-                        ]);
+                          SerializeExpression(expression.Right, true)
+                        ]) + ')';
       else raise Exception.Create('TGpSQLSerializer.SerializeExpression: Unknown operation');
     end;
 end; { TGpSQLSerializer.SerializeExpression }

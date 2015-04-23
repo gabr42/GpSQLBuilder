@@ -236,8 +236,8 @@ type
   var
     FActiveSection: TGpSQLSection;
     FAST          : IGpSQLAST;
+    FASTAndExpr   : IGpSQLExpression;
     FASTColumns   : IGpSQLColumns;
-    FASTExpr      : IGpSQLExpression;
     FASTSection   : IGpSQLSection;
     FASTName      : IGpSQLName;
   strict protected
@@ -245,7 +245,9 @@ type
     procedure AssertSection(sections: TGpSQLSections);
     function  GetAsString: string;
     function  GetAST: IGpSQLAST;
+    function  GetExpression: IGpSQLExpression;
     procedure SelectSection(section: TGpSQLSection);
+    procedure SetExpression(const expression: IGpSQLExpression);
   public
     constructor Create;
     function  &And(const expression: array of const): IGpSQLBuilder; overload;
@@ -476,26 +478,22 @@ end; { TGpSQLBuilder.&And }
 function TGpSQLBuilder.&And(const expression: string): IGpSQLBuilder;
 var
   node: IGpSQLExpression;
+  root: IGpSQLExpression;
 begin
-  // TODO 1 -oPrimoz Gabrijelcic : Assert FASTExpr is assigned
-  if FASTExpr.IsEmpty then
-    FASTExpr.Term := expression
+  root := GetExpression;
+  if root.IsEmpty then begin
+    root.Term := expression;
+    FASTAndExpr := root;
+  end
   else begin
-    node := FASTExpr.New;
-    node.Left := FASTExpr;
+    node := root.New;
+    node.Left := root;
     node.Operation := opAnd;
-    node.Right := FASTExpr.New;
+    node.Right := root.New;
     node.Right.Term := expression;
-    FASTExpr := node;
-    case FActiveSection of
-      secJoin:   (FASTSection as IGpSQLJoin).Condition := FASTExpr;
-      secWhere:  (FASTSection as IGpSQLWhere).Expression := FASTExpr;
-      secHaving: (FASTSection as IGpSQLHaving).Expression := FASTExpr;
-    end;
+    FASTAndExpr := node.Right;
+    SetExpression(node);
   end;
-
-  // TODO 1 -oPrimoz Gabrijelcic : implement: TGpSQLBuilder
-//  FActiveSection.Add(['(', expression, ')'], stAnd);
   Result := Self;
 end; { TGpSQLBuilder.&And }
 
@@ -655,7 +653,6 @@ begin
   FASTName.Name := dbName;
   FASTSection := join;
   FASTColumns := nil;
-  FASTExpr := join.Condition;
   Result := Self;
 end; { TGpSQLBuilder.LeftJoin }
 
@@ -684,9 +681,22 @@ begin
 end; { TGpSQLBuilder.&Or }
 
 function TGpSQLBuilder.&Or(const expression: string): IGpSQLBuilder;
+var
+  node: IGpSQLExpression;
 begin
-  // TODO -oPrimoz Gabrijelcic : implement: TGpSQLBuilder
-//  FActiveSection.Add(['(', expression, ')'], stOr);
+  if not assigned(FASTAndExpr) then
+    raise Exception.Create('TGpSQLBuilder.&&Or: OR can only be applied after AND')
+  else begin
+    node := FASTAndExpr.New;
+    node.Left := FASTAndExpr.Left;
+    node.Right := FASTAndExpr.Right;
+    node.Term := FASTAndExpr.Term;
+    node.Operation := FASTAndExpr.Operation;
+    FASTAndExpr.Left := node;
+    FASTAndExpr.Operation := opOr;
+    FASTAndExpr.Right := FASTAndExpr.New;
+    FASTAndExpr.Right.Term := expression;
+  end;
   Result := Self;
 end; { TGpSQLBuilder.&Or }
 
@@ -699,6 +709,16 @@ function TGpSQLBuilder.GetAST: IGpSQLAST;
 begin
   Result := FAST;
 end; { TGpSQLBuilder.GetAST }
+
+function TGpSQLBuilder.GetExpression: IGpSQLExpression;
+begin
+  case FActiveSection of
+    secJoin:   Result := (FASTSection as IGpSQLJoin).Condition;
+    secWhere:  Result := (FASTSection as IGpSQLWhere).Expression;
+    secHaving: Result := (FASTSection as IGpSQLHaving).Expression;
+    else raise Exception.Create('TGpSQLBuilder.GetExpression: Unsupported section');
+  end;
+end; { TGpSQLBuilder.GetExpression }
 
 function TGpSQLBuilder.Select(const colName: string): IGpSQLBuilder;
 begin
@@ -716,36 +736,41 @@ begin
       begin
         FASTSection := FAST.Select;
         FASTColumns := FAST.Select.Columns;
-        FASTExpr := nil;
       end;
     secWhere:
       begin
         FASTSection := FAST.Where;
         FASTColumns := nil;
-        FASTExpr := FAST.Where.Expression;
       end;
     secGroupBy:
       begin
         FASTSection := FAST.GroupBy;
         FASTColumns := FAST.GroupBy.Columns;
-        FASTExpr := nil;
       end;
     secHaving:
       begin
         FASTSection := FAST.Having;
         FASTColumns := nil;
-        FASTExpr := FAST.Having.Expression;
       end;
     secOrderBy:
       begin
         FASTSection := FAST.OrderBy;
         FASTColumns := FAST.OrderBy.Columns;
-        FASTExpr := nil;
       end;
     else raise Exception.Create('TGpSQLBuilder.SelectSection: Unknown section');
   end;
   FActiveSection := section;
 end; { TGpSQLBuilder.SelectSection }
+
+procedure TGpSQLBuilder.SetExpression(const expression: IGpSQLExpression);
+begin
+  case FActiveSection of
+    secJoin:   (FASTSection as IGpSQLJoin).Condition := expression;
+    secWhere:  (FASTSection as IGpSQLWhere).Expression := expression;
+    secHaving: (FASTSection as IGpSQLHaving).Expression := expression;
+    else raise Exception.Create('TGpSQLBuilder.SetExpression: Unsupported section');
+  end;
+end; { TGpSQLBuilder.SetExpression }
 
 function TGpSQLBuilder.Skip(num: integer): IGpSQLBuilder;
 var
