@@ -98,12 +98,15 @@ type
   IGpSQLBuilder = interface;
 
   IGpSQLBuilderExpression = interface ['{CC7ED7A2-3B39-4341-9CBB-EE1C7851BBA9}']
-    function  GetAsString: string;
+    function  GetExpression: IGpSQLExpression;
   //
     function  &And(const expression: array of const): IGpSQLBuilderExpression; overload;
     function  &And(const expression: string): IGpSQLBuilderExpression; overload;
+    function  &And(const expression: IGpSQLExpression): IGpSQLBuilderExpression; overload;
     function  &Or(const expression: array of const): IGpSQLBuilderExpression; overload;
     function  &Or(const expression: string): IGpSQLBuilderExpression; overload;
+    function  &Or(const expression: IGpSQLExpression): IGpSQLBuilderExpression; overload;
+    property Expression: IGpSQLExpression read GetExpression;
   end; { IGpSQLBuilderExpression }
 
   IGpSQLBuilderCase = interface ['{1E379718-0959-455A-80AA-63BDA7C92F8C}']
@@ -186,15 +189,20 @@ type
   TGpSQLBuilderExpression = class(TInterfacedObject, IGpSQLBuilderExpression)
   strict private
     FExpression: IGpSQLExpression;
+    FLastAnd   : IGpSQLExpression;
   strict protected
-    function  GetAsString: string;
+    function  FindRightmostAnd(const expression: IGpSQLExpression): IGpSQLExpression;
+    function  GetExpression: IGpSQLExpression;
   public
-    constructor Create(const expression: string = '');
+    constructor Create(const expression: string = ''); overload;
+    constructor Create(const expression: IGpSQLExpression); overload;
     function  &And(const expression: array of const): IGpSQLBuilderExpression; overload;
     function  &And(const expression: string): IGpSQLBuilderExpression; overload;
+    function  &And(const expression: IGpSQLExpression): IGpSQLBuilderExpression; overload;
     function  &Or(const expression: array of const): IGpSQLBuilderExpression; overload;
     function  &Or(const expression: string): IGpSQLBuilderExpression; overload;
-    property AsString: string read GetAsString;
+    function  &Or(const expression: IGpSQLExpression): IGpSQLBuilderExpression; overload;
+    property Expression: IGpSQLExpression read GetExpression;
   end; { TGpSQLBuilderExpression }
 
   TGpSQLBuilderCase = class(TInterfacedObject, IGpSQLBuilderCase)
@@ -234,8 +242,8 @@ type
     TGpSQLSections = set of TGpSQLSection;
   var
     FActiveSection: TGpSQLSection;
+    FActiveExpr   : IGpSQLBuilderExpression;
     FAST          : IGpSQLAST;
-    FASTAndExpr   : IGpSQLExpression;
     FASTColumns   : IGpSQLColumns;
     FASTSection   : IGpSQLSection;
     FASTName      : IGpSQLName;
@@ -244,7 +252,6 @@ type
     procedure AssertSection(sections: TGpSQLSections);
     function  GetAsString: string;
     function  GetAST: IGpSQLAST;
-    function  GetExpression: IGpSQLExpression;
     procedure SelectSection(section: TGpSQLSection);
   public
     constructor Create;
@@ -326,26 +333,26 @@ function TGpSQLBuilderCase.&And(const expression: IGpSQLBuilderExpression):
 begin
 // TODO 1 -oPrimoz Gabrijelcic : implement: TGpSQLBuilderCase
 //  Result := &And(expression.AsString);
-end; { TGpSQLBuilderCase }
+end; { TGpSQLBuilderCase.&And }
 
 function TGpSQLBuilderCase.&Else(const value: string): IGpSQLBuilderCase;
 begin
   FElseValue := value;
   FHasElse := true;
   Result := Self;
-end; { TGpSQLBuilderCase }
+end; { TGpSQLBuilderCase.&Else }
 
 function TGpSQLBuilderCase.&Else(const value: int64): IGpSQLBuilderCase;
 begin
   Result := &Else(IntToStr(value));
-end; { TGpSQLBuilderCase }
+end; { TGpSQLBuilderCase.&Else }
 
 function TGpSQLBuilderCase.&End: IGpSQLBuilder;
 begin
   // TODO -oPrimoz Gabrijelcic : implement: TGpSQLBuilderCase
 //  (FSQLBuilder as IGpSQLBuilderEx).ActiveSection.Add(AsString, stList);
   Result := FSQLBuilder;
-end; { TGpSQLBuilderCase }
+end; { TGpSQLBuilderCase.&End }
 
 function TGpSQLBuilderCase.GetAsString: string;
 //var
@@ -379,7 +386,7 @@ function TGpSQLBuilderCase.&Or(const expression: IGpSQLBuilderExpression):
 begin
 // TODO 1 -oPrimoz Gabrijelcic : implement: TGpSQLBuilderCase
 //  Result := &Or(expression.AsString);
-end; { TGpSQLBuilderCase }
+end; { TGpSQLBuilderCase.&Or }
 
 function TGpSQLBuilderCase.&Then(const value: string): IGpSQLBuilderCase;
 begin
@@ -388,12 +395,12 @@ begin
       FWhenList[FWhenList.Count - 1].Key,
       value);
   Result := Self;
-end; { TGpSQLBuilderCase }
+end; { TGpSQLBuilderCase.&Then }
 
 function TGpSQLBuilderCase.&Then(const value: int64): IGpSQLBuilderCase;
 begin
   Result := &Then(IntToStr(value));
-end; { TGpSQLBuilderCase }
+end; { TGpSQLBuilderCase.&Then }
 
 function TGpSQLBuilderCase.Expression: IGpSQLBuilderExpression;
 begin
@@ -426,35 +433,95 @@ begin
     &And(expression);
 end; { TGpSQLBuilderExpression.Create }
 
-function TGpSQLBuilderExpression.&And(const expression: string): IGpSQLBuilderExpression;
+constructor TGpSQLBuilderExpression.Create(const expression: IGpSQLExpression);
 begin
-// TODO 1 -oPrimoz Gabrijelcic : implement: TGpSQLBuilderExpression
-  Result := Self;
-end; { TGpSQLBuilderExpression }
+  inherited Create;
+  FExpression := expression;
+  FLastAnd := FindRightmostAnd(expression);
+end; { TGpSQLBuilderExpression.Create }
+
+function TGpSQLBuilderExpression.&And(const expression: string): IGpSQLBuilderExpression;
+var
+  node: IGpSQLExpression;
+begin
+  node := CreateSQLExpression;
+  node.Term := expression;
+  Result := &And(node);
+end; { TGpSQLBuilderExpression.&And }
 
 function TGpSQLBuilderExpression.&And(
   const expression: array of const): IGpSQLBuilderExpression;
 begin
   Result := &And(SqlParamsToStr(expression));
-end; { TGpSQLBuilderExpression }
+end; { TGpSQLBuilderExpression.&And }
 
-function TGpSQLBuilderExpression.GetAsString: string;
+function TGpSQLBuilderExpression.&And(const expression: IGpSQLExpression):
+  IGpSQLBuilderExpression;
+var
+  node: IGpSQLExpression;
+  root: IGpSQLExpression;
 begin
-  // TODO -oPrimoz Gabrijelcic : Remove
-//  Result := FActiveSection.AsString;
-end; { TGpSQLBuilderExpression.GetAsString }
+  root := FExpression;
+  if root.IsEmpty then begin
+    root.Assign(expression);
+    FLastAnd := root;
+  end
+  else begin
+    node := CreateSQLExpression;
+    node.Assign(root);
+    root.Left := node;
+    root.Operation := opAnd;
+    root.Right := expression;
+    FLastAnd := root.Right;
+  end;
+  Result := Self;
+end; { TGpSQLBuilderExpression.&And }
+
+function TGpSQLBuilderExpression.FindRightmostAnd(const expression: IGpSQLExpression):
+  IGpSQLExpression;
+begin
+  if expression.Operation = opNone then
+    Result := expression
+  else if expression.Operation = opOr then
+    Result := expression
+  else
+    Result := FindRightmostAnd(expression.Right);
+end; { TGpSQLBuilderExpression.FindRightmostAnd }
 
 function TGpSQLBuilderExpression.&Or(const expression: string): IGpSQLBuilderExpression;
+var
+  node: IGpSQLExpression;
 begin
-  // TODO 1 -oPrimoz Gabrijelcic : implement: TGpSQLBuilderExpression
-//  FActiveSection.Add(['(', expression, ')'], stOr);
-  Result := Self;
-end; { TGpSQLBuilderExpression }
+  node := CreateSQLExpression;
+  node.Term := expression;
+  Result := &Or(node);
+end; { TGpSQLBuilderExpression.&Or }
 
 function TGpSQLBuilderExpression.&Or(const expression: array of const): IGpSQLBuilderExpression;
 begin
   Result := &Or(SqlParamsToStr(expression));
-end; { TGpSQLBuilderExpression }
+end; { TGpSQLBuilderExpression.&Or }
+
+function TGpSQLBuilderExpression.&Or(const expression: IGpSQLExpression): IGpSQLBuilderExpression;
+var
+  node: IGpSQLExpression;
+begin
+  if not assigned(FLastAnd) then
+    raise Exception.Create('TGpSQLBuilder.&&Or: OR can only be applied after AND')
+  else begin
+    node := CreateSQLExpression;
+    node.Assign(FLastAnd);
+    FLastAnd.Left := node;
+    FLastAnd.Operation := opOr;
+    FLastAnd.Right := expression;
+  end;
+  Result := Self;
+end; { TGpSQLBuilderExpression.&Or }
+
+function TGpSQLBuilderExpression.GetExpression: IGpSQLExpression;
+begin
+  Result := FExpression;
+end; { TGpSQLBuilderExpression.GetExpression }
 
 { TGpSQLBuilder }
 
@@ -475,35 +542,16 @@ begin
 end; { TGpSQLBuilder.&And }
 
 function TGpSQLBuilder.&And(const expression: string): IGpSQLBuilder;
-var
-  node: IGpSQLExpression;
-  root: IGpSQLExpression;
 begin
-  root := GetExpression;
-  if root.IsEmpty then begin
-    root.Term := expression;
-    FASTAndExpr := root;
-  end
-  else begin
-    node := CreateSQLExpression;
-    node.Left := root.Left;
-    node.Right := root.Right;
-    node.Term := root.Term;
-    node.Operation := root.Operation;
-    root.Left := node;
-    root.Operation := opAnd;
-    root.Right := CreateSQLExpression;
-    root.Right.Term := expression;
-    FASTAndExpr := root.Right;
-  end;
+  FActiveExpr.&And(expression);
   Result := Self;
 end; { TGpSQLBuilder.&And }
 
 function TGpSQLBuilder.&And(const expression: IGpSQLBuilderExpression): IGpSQLBuilder;
 begin
-  // TODO 1 -oPrimoz Gabrijelcic : implement: TGpSQLBuilder
-//  Result := &And(expression.AsString);
-end; { TGpSQLBuilder }
+  FActiveExpr.&And(expression.Expression);
+  Result := Self;
+end; { TGpSQLBuilder.&And }
 
 function TGpSQLBuilder.&As(const alias: string): IGpSQLBuilder;
 var
@@ -532,12 +580,12 @@ end; { TGpSQLBuilder.AssertSection }
 function TGpSQLBuilder.&Case(const expression: string = ''): IGpSQLBuilderCase;
 begin
   Result := TGpSQLBuilderCase.Create(Self, expression);
-end; { TGpSQLBuilder }
+end; { TGpSQLBuilder.&Case }
 
 function TGpSQLBuilder.&Case(const expression: array of const): IGpSQLBuilderCase;
 begin
   Result := &Case(SqlParamsToStr(expression));
-end; { TGpSQLBuilder }
+end; { TGpSQLBuilder.&Case }
 
 function TGpSQLBuilder.Clear: IGpSQLBuilder;
 begin
@@ -656,18 +704,19 @@ begin
   FASTName.Name := dbName;
   FASTSection := join;
   FASTColumns := nil;
+  FActiveExpr := TGpSQLBuilderExpression.Create(join.Condition);
   Result := Self;
 end; { TGpSQLBuilder.LeftJoin }
 
 function TGpSQLBuilder.&On(const expression: string): IGpSQLBuilder;
 begin
   Result := &And(expression);
-end; { TGpSQLBuilder }
+end; { TGpSQLBuilder.&On }
 
 function TGpSQLBuilder.&On(const expression: array of const): IGpSQLBuilder;
 begin
   Result := &On(SqlParamsToStr(expression));
-end; { TGpSQLBuilder }
+end; { TGpSQLBuilder.&On }
 
 function TGpSQLBuilder.OrderBy(const colName: string): IGpSQLBuilder;
 begin
@@ -684,45 +733,21 @@ begin
 end; { TGpSQLBuilder.&Or }
 
 function TGpSQLBuilder.&Or(const expression: string): IGpSQLBuilder;
-var
-  node: IGpSQLExpression;
 begin
-  if not assigned(FASTAndExpr) then
-    raise Exception.Create('TGpSQLBuilder.&&Or: OR can only be applied after AND')
-  else begin
-    node := CreateSQLExpression;
-    node.Left := FASTAndExpr.Left;
-    node.Right := FASTAndExpr.Right;
-    node.Term := FASTAndExpr.Term;
-    node.Operation := FASTAndExpr.Operation;
-    FASTAndExpr.Left := node;
-    FASTAndExpr.Operation := opOr;
-    FASTAndExpr.Right := CreateSQLExpression;
-    FASTAndExpr.Right.Term := expression;
-  end;
+  FActiveExpr.&Or(expression);
   Result := Self;
 end; { TGpSQLBuilder.&Or }
 
 function TGpSQLBuilder.&Or(const expression: IGpSQLBuilderExpression): IGpSQLBuilder;
 begin
-// TODO 1 -oPrimoz Gabrijelcic : implement: TGpSQLBuilder
-//  Result := &Or(expression.AsString);
-end; { TGpSQLBuilder }
+  FActiveExpr.&Or(expression.Expression);
+  Result := Self;
+end; { TGpSQLBuilder.&Or }
 
 function TGpSQLBuilder.GetAST: IGpSQLAST;
 begin
   Result := FAST;
 end; { TGpSQLBuilder.GetAST }
-
-function TGpSQLBuilder.GetExpression: IGpSQLExpression;
-begin
-  case FActiveSection of
-    secJoin:   Result := (FASTSection as IGpSQLJoin).Condition;
-    secWhere:  Result := (FASTSection as IGpSQLWhere).Expression;
-    secHaving: Result := (FASTSection as IGpSQLHaving).Expression;
-    else raise Exception.Create('TGpSQLBuilder.GetExpression: Unsupported section');
-  end;
-end; { TGpSQLBuilder.GetExpression }
 
 function TGpSQLBuilder.Select(const colName: string): IGpSQLBuilder;
 begin
@@ -740,28 +765,34 @@ begin
       begin
         FASTSection := FAST.Select;
         FASTColumns := FAST.Select.Columns;
+        FActiveExpr := nil;
       end;
     secWhere:
       begin
         FASTSection := FAST.Where;
         FASTColumns := nil;
+        FActiveExpr := TGpSQLBuilderExpression.Create(FAST.Where.Expression);
       end;
     secGroupBy:
       begin
         FASTSection := FAST.GroupBy;
         FASTColumns := FAST.GroupBy.Columns;
+        FActiveExpr := nil;
       end;
     secHaving:
       begin
         FASTSection := FAST.Having;
         FASTColumns := nil;
+        FActiveExpr := TGpSQLBuilderExpression.Create(FAST.Having.Expression);
       end;
     secOrderBy:
       begin
         FASTSection := FAST.OrderBy;
         FASTColumns := FAST.OrderBy.Columns;
+        FActiveExpr := nil;
       end;
-    else raise Exception.Create('TGpSQLBuilder.SelectSection: Unknown section');
+    else
+      raise Exception.Create('TGpSQLBuilder.SelectSection: Unknown section');
   end;
   FActiveSection := section;
 end; { TGpSQLBuilder.SelectSection }

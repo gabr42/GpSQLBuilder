@@ -83,6 +83,7 @@ type
     procedure SetRight(const value: IGpSQLExpression);
     procedure SetTerm(const value: string);
   //
+    procedure Assign(const node: IGpSQLExpression);
     procedure Clear;
     function  IsEmpty: boolean;
     property Term: string read GetTerm write SetTerm;
@@ -272,6 +273,7 @@ type
     procedure SetRight(const value: IGpSQLExpression);
     procedure SetTerm(const value: string);
   public
+    procedure Assign(const node: IGpSQLExpression);
     procedure Clear;
     function  IsEmpty: boolean;
     property Term: string read GetTerm write SetTerm;
@@ -562,6 +564,14 @@ begin
 end; { TGpSQLColumns.IsEmpty }
 
 { TGpSQLExpression }
+
+procedure TGpSQLExpression.Assign(const node: IGpSQLExpression);
+begin
+  FLeft := node.Left;
+  FRight := node.Right;
+  FTerm := node.Term;
+  FOperation := node.Operation;
+end; { TGpSQLExpression.Assign }
 
 procedure TGpSQLExpression.Clear;
 begin
