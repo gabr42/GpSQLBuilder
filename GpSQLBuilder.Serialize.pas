@@ -191,7 +191,7 @@ begin
   for i := 0 to columns.Count - 1 do begin
     Result := Concatenate([Result, SerializeName(columns[i])], ', ');
     if Supports(columns[i], IGpSQLOrderByColumn, orderByCol) then
-      Result := Concatenate(Result, SerializeDirection(orderByCol.Direction));
+      Result := Concatenate([Result, SerializeDirection(orderByCol.Direction)]);
   end;
 end; { TGpSQLSerializer.SerializeColumns }
 

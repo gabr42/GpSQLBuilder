@@ -1,12 +1,12 @@
 ﻿<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
-<test-results name="H:\razvoj\GpSQLBuilder\Tests\Win32\Debug\TestGpSQLBuilder.exe" total="46" errors="0" failures="18" ignored="0" inconclusive="0" not-run="0" skipped="0" invalid="0" date="2015-04-23" time="0.250">
+<test-results name="H:\razvoj\GpSQLBuilder\Tests\Win32\Debug\TestGpSQLBuilder.exe" total="46" errors="0" failures="15" ignored="0" inconclusive="0" not-run="0" skipped="0" invalid="0" date="2015-04-23" time="3.475">
   <environment nunit-version="DUnitX" clr-version="2.0.0.0" os-version="6.1.0.0" platform="Windows" cwd="c:\test" machine-name="mymachine" user="vincent" user-domain="finalbuilder.com"  />
   <culture-info current-culture="en" current-uiculture="en" />
-  <test-suite type="Assembly" name="TestGpSQLBuilder.exe" executed="true" result="Failure" success="False" time="0.250" asserts="0">
+  <test-suite type="Assembly" name="TestGpSQLBuilder.exe" executed="true" result="Failure" success="False" time="3.475" asserts="0">
     <results>
-        <test-suite type="Namespace" name="TestGpSQLBuilder1" executed="true" result="Failure" success="False" time="0.166" asserts="0" >
+        <test-suite type="Namespace" name="TestGpSQLBuilder1" executed="true" result="Failure" success="False" time="3.396" asserts="0" >
           <results>
-              <test-suite type="Fixture" name="TTestGpSQLBuilder" executed="True" result="Failure" success="False" time="0.166" >
+              <test-suite type="Fixture" name="TTestGpSQLBuilder" executed="True" result="Failure" success="False" time="3.396" >
                 <results>
                   <test-case name="TestEmptyResult" executed="True" result="Success" success="True" time="0.000" asserts="0" />
                   <test-case name="TestSelectAll" executed="True" result="Success" success="True" time="0.000" asserts="0" />
@@ -30,39 +30,12 @@
                   <test-case name="TestOrderBy" executed="True" result="Success" success="True" time="0.000" asserts="0" />
                   <test-case name="TestOrderBy2" executed="True" result="Success" success="True" time="0.000" asserts="0" />
                   <test-case name="TestOrderByTwoColumns" executed="True" result="Success" success="True" time="0.000" asserts="0" />
-                  <test-case name="TestOrderByDesc" executed="True" result="Failure" success="False" time="0.042" asserts="0" >
-                    <failure>
-                      <message>
-                        <![CDATA[ [SELECT * FROM Test ORDER BY Column1 DESC] is Not Equal to [SELECT * FROM Test ORDER BY Column1]  ]]>
-                      </message>
-                      <stack-trace>
-                        <![CDATA[  ]]>
-                      </stack-trace>
-                    </failure>
-                  </test-case>
-                  <test-case name="TestOrderByTwoColumnsDesc1" executed="True" result="Failure" success="False" time="0.016" asserts="0" >
-                    <failure>
-                      <message>
-                        <![CDATA[ [SELECT * FROM Test ORDER BY Column1 DESC, Column2] is Not Equal to [SELECT * FROM Test ORDER BY Column1, Column2]  ]]>
-                      </message>
-                      <stack-trace>
-                        <![CDATA[  ]]>
-                      </stack-trace>
-                    </failure>
-                  </test-case>
-                  <test-case name="TestOrderByTwoColumnsDesc2" executed="True" result="Failure" success="False" time="0.007" asserts="0" >
-                    <failure>
-                      <message>
-                        <![CDATA[ [SELECT * FROM Test ORDER BY Column1, Column2 DESC] is Not Equal to [SELECT * FROM Test ORDER BY Column1, Column2]  ]]>
-                      </message>
-                      <stack-trace>
-                        <![CDATA[  ]]>
-                      </stack-trace>
-                    </failure>
-                  </test-case>
+                  <test-case name="TestOrderByDesc" executed="True" result="Success" success="True" time="3.274" asserts="0" />
+                  <test-case name="TestOrderByTwoColumnsDesc1" executed="True" result="Success" success="True" time="0.000" asserts="0" />
+                  <test-case name="TestOrderByTwoColumnsDesc2" executed="True" result="Success" success="True" time="0.000" asserts="0" />
                   <test-case name="TestWhereAnd" executed="True" result="Success" success="True" time="0.000" asserts="0" />
                   <test-case name="TestWhereAnd2" executed="True" result="Success" success="True" time="0.000" asserts="0" />
-                  <test-case name="TestWhereOr" executed="True" result="Failure" success="False" time="0.011" asserts="0" >
+                  <test-case name="TestWhereOr" executed="True" result="Failure" success="False" time="0.040" asserts="0" >
                     <failure>
                       <message>
                         <![CDATA[ [SELECT * FROM Test WHERE ((Column1 IS NOT NULL) OR (Column2 > 0))] is Not Equal to [SELECT * FROM Test WHERE Column1 IS NOT NULL]  ]]>
@@ -72,7 +45,7 @@
                       </stack-trace>
                     </failure>
                   </test-case>
-                  <test-case name="TestWhereAndOr" executed="True" result="Failure" success="False" time="0.010" asserts="0" >
+                  <test-case name="TestWhereAndOr" executed="True" result="Failure" success="False" time="0.009" asserts="0" >
                     <failure>
                       <message>
                         <![CDATA[ [SELECT * FROM Test WHERE ((Column1 IS NULL) OR (Column1 = 0)) AND ((Column2 > 0) OR (Column2 < 10))] is Not Equal to [SELECT * FROM Test WHERE (Column1 IS NULL) AND (Column2 > 0)]  ]]>
@@ -102,7 +75,7 @@
                       </stack-trace>
                     </failure>
                   </test-case>
-                  <test-case name="TestExpressionIntegration2" executed="True" result="Failure" success="False" time="0.010" asserts="0" >
+                  <test-case name="TestExpressionIntegration2" executed="True" result="Failure" success="False" time="0.009" asserts="0" >
                     <failure>
                       <message>
                         <![CDATA[ [SELECT * FROM Test WHERE (Column1 IS NULL) AND (((Column2 < 0) OR (Column2 > 10)))] is Not Equal to [SELECT * FROM Test WHERE (Column1 IS NULL) AND ()]  ]]>
@@ -140,9 +113,9 @@
               </test-suite>
           </results>
         </test-suite>
-        <test-suite type="Fixture" name="TTestGpSQLBuilderExpression" executed="True" result="Failure" success="False" time="0.043" >
+        <test-suite type="Fixture" name="TTestGpSQLBuilderExpression" executed="True" result="Failure" success="False" time="0.039" >
           <results>
-            <test-case name="TestAnd" executed="True" result="Failure" success="False" time="0.011" asserts="0" >
+            <test-case name="TestAnd" executed="True" result="Failure" success="False" time="0.008" asserts="0" >
               <failure>
                 <message>
                   <![CDATA[ [(Column1 IS NOT NULL) AND (Column2 > 0)] is Not Equal to []  ]]>
@@ -152,7 +125,7 @@
                 </stack-trace>
               </failure>
             </test-case>
-            <test-case name="TestAnd2" executed="True" result="Failure" success="False" time="0.010" asserts="0" >
+            <test-case name="TestAnd2" executed="True" result="Failure" success="False" time="0.009" asserts="0" >
               <failure>
                 <message>
                   <![CDATA[ [(Column1 IS NOT NULL) AND (Column2 > 0)] is Not Equal to []  ]]>
@@ -162,7 +135,7 @@
                 </stack-trace>
               </failure>
             </test-case>
-            <test-case name="TestOr" executed="True" result="Failure" success="False" time="0.010" asserts="0" >
+            <test-case name="TestOr" executed="True" result="Failure" success="False" time="0.009" asserts="0" >
               <failure>
                 <message>
                   <![CDATA[ [((Column1 IS NOT NULL) OR (Column2 > 0))] is Not Equal to []  ]]>
