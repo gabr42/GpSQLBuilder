@@ -85,7 +85,6 @@ type
   //
     procedure Clear;
     function  IsEmpty: boolean;
-    function  New: IGpSQLExpression;
     property Term: string read GetTerm write SetTerm;
     property Operation: TGpSQLExpressionOperation read GetOperation write SetOperation;
     property Left: IGpSQLExpression read GetLeft write SetLeft;
@@ -215,6 +214,7 @@ type
   end; { IGpSQLAST }
 
   function CreateSQLAST: IGpSQLAST;
+  function CreateSQLExpression: IGpSQLExpression;
 
 implementation
 
@@ -274,7 +274,6 @@ type
   public
     procedure Clear;
     function  IsEmpty: boolean;
-    function  New: IGpSQLExpression;
     property Term: string read GetTerm write SetTerm;
     property Operation: TGpSQLExpressionOperation read GetOperation write SetOperation;
     property Left: IGpSQLExpression read GetLeft write SetLeft;
@@ -479,6 +478,11 @@ begin
   Result := TGpSQLAST.Create;
 end; { CreateSQLAST }
 
+function CreateSQLExpression: IGpSQLExpression;
+begin
+  Result := TGpSQLExpression.Create;
+end; { CreateSQLExpression }
+
 { TGpSQLName }
 
 procedure TGpSQLName.Clear;
@@ -591,11 +595,6 @@ function TGpSQLExpression.IsEmpty: boolean;
 begin
   Result := (FOperation = opNone) and (FTerm = '');
 end; { TGpSQLExpression.IsEmpty }
-
-function TGpSQLExpression.New: IGpSQLExpression;
-begin
-  Result := TGpSQLExpression.Create;
-end; { TGpSQLExpression.New }
 
 procedure TGpSQLExpression.SetLeft(const value: IGpSQLExpression);
 begin
