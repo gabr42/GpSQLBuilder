@@ -47,12 +47,16 @@ uses
   GpSQLBuilder.AST;
 
 type
-  IGpSQLASTSerializer = interface
-  ['{E6355E23-1D91-4536-A693-E1E33B0E2707}']
+  IGpSQLExpressionSerializer = interface ['{A0CCE046-081E-4B12-8A0A-B5D7B9D0308F}']
+    function AsString: string;
+  end; { IGpSQLExpressionSerializer }
+
+  IGpSQLASTSerializer = interface ['{E6355E23-1D91-4536-A693-E1E33B0E2707}']
     function AsString: string;
   end; { IGpSQLASTSerializer }
 
-function CreateSQLSerializer(const ast: IGpSQLAST): IGpSQLASTSerializer;
+function CreateSQLSerializer(const ast: IGpSQLAST): IGpSQLASTSerializer; overload;
+function CreateSQLSerializer(const expr: IGpSQLExpression): IGpSQLExpressionSerializer; overload;
 
 // TODO -oPrimoz Gabrijelcic : temporary solution
 function SqlParamsToStr(const params: array of const): string;
@@ -63,15 +67,23 @@ uses
   System.SysUtils;
 
 type
+  TGpSQLExpressionSerializer = class(TInterfacedObject, IGpSQLExpressionSerializer)
+  strict private
+    FExpr: IGpSQLExpression;
+  strict protected
+    function  SerializeExpression(const expression: IGpSQLExpression; addParens: boolean = false): string;
+  public
+    constructor Create(const AExpr: IGpSQLExpression);
+    function AsString: string;
+  end; { TGpSQLExpressionSerializer }
+
   TGpSQLSerializer = class(TInterfacedObject, IGpSQLASTSerializer)
   strict private
-    FAST: IGpSQLAST;
+    FAST : IGpSQLAST;
   strict protected
-    function  AddToList(const aList, delim, newElement: string): string;
-    function  Concatenate(const elements: array of string; delimiter: string = ' '): string;
     function  SerializeColumns(const columns: IGpSQLColumns): string;
     function  SerializeDirection(direction: TGpSQLOrderByDirection): string;
-    function  SerializeExpression(const expression: IGpSQLExpression; addParens: boolean = false): string;
+    function  SerializeExpression(const expression: IGpSQLExpression): string;
     function  SerializeGroupBy: string;
     function  SerializeHaving: string;
     function  SerializeJoins: string;
@@ -116,6 +128,24 @@ begin
   end;
 end; { VarRecToString }
 
+function AddToList(const aList, delim, newElement: string): string;
+begin
+  Result := aList;
+  if Result <> '' then
+    Result := Result + delim;
+  Result := Result + newElement;
+end; { AddToList }
+
+function Concatenate(const elements: array of string; delimiter: string = ' '): string;
+var
+  s: string;
+begin
+  Result := '';
+  for s in elements do
+    if s <> '' then
+      Result := AddToList(Result, delimiter, s);
+end; { Concatenate }
+
 { exports }
 
 function SqlParamsToStr(const params: array of const): string;
@@ -144,6 +174,49 @@ begin
   Result := TGpSQLSerializer.Create(ast);
 end; { CreateSQLSerializer }
 
+function CreateSQLSerializer(const expr: IGpSQLExpression): IGpSQLExpressionSerializer;
+begin
+  Result := TGpSQLExpressionSerializer.Create(expr);
+end; { CreateSQLSerializer }
+
+{ TGpSQLExpressionSerializer }
+
+function TGpSQLExpressionSerializer.AsString: string;
+begin
+  Result := SerializeExpression(FExpr);
+end; { TGpSQLExpressionSerializer.AsString }
+
+constructor TGpSQLExpressionSerializer.Create(const AExpr: IGpSQLExpression);
+begin
+  inherited Create;
+  FExpr := AExpr;
+end; { TGpSQLExpressionSerializer.Create }
+
+function TGpSQLExpressionSerializer.SerializeExpression(
+  const expression: IGpSQLExpression; addParens: boolean): string;
+begin
+  if expression.IsEmpty then
+    Result := ''
+  else
+    case expression.Operation of
+      opNone: if addParens then
+                Result := '(' + expression.Term + ')'
+              else
+                Result := expression.Term;
+      opAnd:  Result := Concatenate([
+                          SerializeExpression(expression.Left, true),
+                          'AND',
+                          SerializeExpression(expression.Right, true)
+                        ]);
+      opOr:   Result := '(' + Concatenate([
+                          SerializeExpression(expression.Left, true),
+                          'OR',
+                          SerializeExpression(expression.Right, true)
+                        ]) + ')';
+      else raise Exception.Create('TGpSQLSerializer.SerializeExpression: Unknown operation');
+    end;
+end; { TGpSQLExpressionSerializer.SerializeExpression }
+
 { TGpSQLSerializer }
 
 constructor TGpSQLSerializer.Create(const AAST: IGpSQLAST);
@@ -151,14 +224,6 @@ begin
   inherited Create;
   FAST := AAST;
 end; { TGpSQLSerializer.Create }
-
-function TGpSQLSerializer.AddToList(const aList, delim, newElement: string): string;
-begin
-  Result := aList;
-  if Result <> '' then
-    Result := Result + delim;
-  Result := Result + newElement;
-end; { TGpSQLSerializer.AddToList }
 
 function TGpSQLSerializer.AsString: string;
 begin
@@ -170,17 +235,6 @@ begin
     SerializeHaving,
     SerializeOrderBy]);
 end; { TGpSQLSerializer.AsString }
-
-function TGpSQLSerializer.Concatenate(const elements: array of string; delimiter: string
-  = ' '): string;
-var
-  s: string;
-begin
-  Result := '';
-  for s in elements do
-    if s <> '' then
-      Result := AddToList(Result, delimiter, s);
-end; { TGpSQLSerializer.Concatenate }
 
 function TGpSQLSerializer.SerializeColumns(const columns: IGpSQLColumns): string;
 var
@@ -204,29 +258,14 @@ begin
   end;
 end; { TGpSQLSerializer.SerializeDirection }
 
-function TGpSQLSerializer.SerializeExpression(const expression: IGpSQLExpression;
-  addParens: boolean): string;
+function TGpSQLSerializer.SerializeExpression(const expression: IGpSQLExpression): string;
+var
+  serializer: TGpSQLExpressionSerializer;
 begin
-  if expression.IsEmpty then
-    Result := ''
-  else
-    case expression.Operation of
-      opNone: if addParens then
-                Result := '(' + expression.Term + ')'
-              else
-                Result := expression.Term;
-      opAnd:  Result := Concatenate([
-                          SerializeExpression(expression.Left, true),
-                          'AND',
-                          SerializeExpression(expression.Right, true)
-                        ]);
-      opOr:   Result := '(' + Concatenate([
-                          SerializeExpression(expression.Left, true),
-                          'OR',
-                          SerializeExpression(expression.Right, true)
-                        ]) + ')';
-      else raise Exception.Create('TGpSQLSerializer.SerializeExpression: Unknown operation');
-    end;
+  serializer := TGpSQLExpressionSerializer.Create(expression);
+  try
+    Result := serializer.AsString;
+  finally FreeAndNil(serializer); end;
 end; { TGpSQLSerializer.SerializeExpression }
 
 function TGpSQLSerializer.SerializeGroupBy: string;

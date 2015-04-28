@@ -111,16 +111,28 @@ const
   CExpected = 'SELECT CASE WHEN (Column2 < 0) THEN 0 WHEN (Column2 > 100) THEN 2 ' +
     'ELSE 1 END FROM Test';
 begin
-// TODO -oPrimoz Gabrijelcic : implement: TTestGpSQLBuilder.TestCaseIntegration
 //  SQL
-//    .Select
-//      .&Case
+//    .Select(
+//      SQL.&Case
 //        .When([COL_2, '< 0']).&Then('0')
 //        .When([COL_2, '> 100']).&Then('2')
 //        .&Else('1')
-//      .&End
+//      .&End)
 //    .From(DB_TEST);
+
+//select(case)
+//orderby(case)
+//column(case)
+
+//SELECT BusinessEntityID, SalariedFlag
+//FROM HumanResources.Employee
+//ORDER BY CASE SalariedFlag WHEN 1 THEN BusinessEntityID END DESC,
+//         CASE WHEN SalariedFlag = 0 THEN BusinessEntityID END;
+
 //  Assert.AreEqual(CExpected, SQL.AsString);
+
+//.Func('Max', case, expression
+
 end;
 
 procedure TTestGpSQLBuilder.TestColumnAlias;
@@ -523,12 +535,12 @@ const
 var
   SQLCase: IGpSQLBuilderCase;
 begin
-// TODO 1 -oPrimoz Gabrijelcic : implement: TTestGpSQLBuilderCase.TestCase
 //  SQLCase := CreateGpSQLBuilder.&Case
 //    .When([COL_2, '< 0']).&Then('0')
 //    .When([COL_2, '> 100']).&Then('2')
-//    .&Else('1');
-//  Assert.AreEqual(CExpected, SQLCase.AsString);
+//    .&Else('1')
+//    .&End;
+  Assert.AreEqual(CExpected, SQLCase.AsString);
 end;
 
 procedure TTestGpSQLBuilderCase.TestCase2;
@@ -541,7 +553,8 @@ begin
 //  SQLCase := CreateGpSQLBuilder.&Case
 //    .When([COL_2, '< 0']).&Then(0)
 //    .When([COL_2, '> 100']).&Then(2)
-//    .&Else(1);
+//    .&Else(1)
+//    .&End;
 //  Assert.AreEqual(CExpected, SQLCase.AsString);
 end;
 
@@ -554,7 +567,8 @@ begin
 // TODO -oPrimoz Gabrijelcic : implement: TTestGpSQLBuilderCase.TestCase3
 //  SQLCase := CreateGpSQLBuilder.&Case(COL_2)
 //    .When([0]).&Then('''A''')
-//    .When([1]).&Then('''B''');
+//    .When([1]).&Then('''B''')
+//    .&End;
 //  Assert.AreEqual(CExpected, SQLCase.AsString);
 end;
 
@@ -573,13 +587,16 @@ begin
 //    .When([COL_2, '> 100'])
 //      .&Or([COL_1, 'IS NULL'])
 //      .&Then(2)
-//    .&Else(1);
+//    .&Else(1)
+//    .&End;
 //  Assert.AreEqual(CExpected, SQLCase.AsString);
 end;
 
 { TTestGpSQLBuilderExpression }
 
 procedure TTestGpSQLBuilderExpression.TestAnd;
+const
+  CExpected = '(Column1 IS NOT NULL) AND (Column2 > 0)';
 var
   expr: IGpSQLBuilderExpression;
 begin
@@ -592,9 +609,12 @@ begin
   Assert.AreEqual(expr.Expression.Left.Term, 'Column1 IS NOT NULL');
   Assert.IsTrue(expr.Expression.Right.Operation = opNone);
   Assert.AreEqual(expr.Expression.Right.Term, 'Column2 > 0');
+  Assert.AreEqual(CExpected, expr.AsString);
 end;
 
 procedure TTestGpSQLBuilderExpression.TestAnd2;
+const
+  CExpected = '(Column1 IS NOT NULL) AND (Column2 > 0)';
 var
   expr: IGpSQLBuilderExpression;
 begin
@@ -605,9 +625,12 @@ begin
   Assert.AreEqual(expr.Expression.Left.Term, 'Column1 IS NOT NULL');
   Assert.IsTrue(expr.Expression.Right.Operation = opNone);
   Assert.AreEqual(expr.Expression.Right.Term, 'Column2 > 0');
+  Assert.AreEqual(CExpected, expr.AsString);
 end;
 
 procedure TTestGpSQLBuilderExpression.TestAndOr;
+const
+  CExpected = '((Column1 IS NULL) OR (Column1 = 0)) AND ((Column2 > 0) OR (Column2 < 10))';
 var
   expr: IGpSQLBuilderExpression;
 begin
@@ -624,9 +647,12 @@ begin
   Assert.IsTrue(expr.Expression.Right.Operation = opOr);
   Assert.AreEqual(expr.Expression.Right.Left.Term, 'Column2 > 0');
   Assert.AreEqual(expr.Expression.Right.Right.Term, 'Column2 < 10');
+  Assert.AreEqual(CExpected, expr.AsString);
 end;
 
 procedure TTestGpSQLBuilderExpression.TestOr;
+const
+  CExpected = '((Column1 IS NOT NULL) OR (Column2 > 0))';
 var
   expr: IGpSQLBuilderExpression;
 begin
@@ -637,6 +663,7 @@ begin
   Assert.AreEqual(expr.Expression.Left.Term, 'Column1 IS NOT NULL');
   Assert.IsTrue(expr.Expression.Right.Operation = opNone);
   Assert.AreEqual(expr.Expression.Right.Term, 'Column2 > 0');
+  Assert.AreEqual(CExpected, expr.AsString);
 end;
 
 initialization

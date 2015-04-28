@@ -98,6 +98,7 @@ type
   IGpSQLBuilder = interface;
 
   IGpSQLBuilderExpression = interface ['{CC7ED7A2-3B39-4341-9CBB-EE1C7851BBA9}']
+    function  GetAsString: string;
     function  GetExpression: IGpSQLExpression;
   //
     function  &And(const expression: array of const): IGpSQLBuilderExpression; overload;
@@ -106,6 +107,7 @@ type
     function  &Or(const expression: array of const): IGpSQLBuilderExpression; overload;
     function  &Or(const expression: string): IGpSQLBuilderExpression; overload;
     function  &Or(const expression: IGpSQLExpression): IGpSQLBuilderExpression; overload;
+    property AsString: string read GetAsString;
     property Expression: IGpSQLExpression read GetExpression;
   end; { IGpSQLBuilderExpression }
 
@@ -117,7 +119,7 @@ type
     function  &And(const expression: IGpSQLBuilderExpression): IGpSQLBuilderCase; overload;
     function  &Else(const value: string): IGpSQLBuilderCase; overload;
     function  &Else(const value: int64): IGpSQLBuilderCase; overload;
-    function  &End: IGpSQLBuilder;
+    function  &End: IGpSQLBuilderCase;
     function  &Or(const expression: array of const): IGpSQLBuilderCase; overload;
     function  &Or(const expression: string): IGpSQLBuilderCase; overload;
     function  &Or(const expression: IGpSQLBuilderExpression): IGpSQLBuilderCase; overload;
@@ -192,6 +194,7 @@ type
     FLastAnd   : IGpSQLExpression;
   strict protected
     function  FindRightmostAnd(const expression: IGpSQLExpression): IGpSQLExpression;
+    function  GetAsString: string;
     function  GetExpression: IGpSQLExpression;
   public
     constructor Create(const expression: string = ''); overload;
@@ -202,6 +205,7 @@ type
     function  &Or(const expression: array of const): IGpSQLBuilderExpression; overload;
     function  &Or(const expression: string): IGpSQLBuilderExpression; overload;
     function  &Or(const expression: IGpSQLExpression): IGpSQLBuilderExpression; overload;
+    property AsString: string read GetAsString;
     property Expression: IGpSQLExpression read GetExpression;
   end; { TGpSQLBuilderExpression }
 
@@ -211,19 +215,18 @@ type
     FCaseExpression: string;
     FElseValue     : string;
     FHasElse       : boolean;
-    FSQLBuilder    : IGpSQLBuilder;
     FWhenList      : TList<TPair<IGpSQLSection,string>>;
   strict protected
     function  GetAsString: string;
   public
-    constructor Create(const sqlBuilder: IGpSQLBuilder; const expression: string);
+    constructor Create(const expression: string);
     destructor  Destroy; override;
     function  &And(const expression: array of const): IGpSQLBuilderCase; overload;
     function  &And(const expression: string): IGpSQLBuilderCase; overload;
     function  &And(const expression: IGpSQLBuilderExpression): IGpSQLBuilderCase; overload;
     function  &Else(const value: string): IGpSQLBuilderCase; overload;
     function  &Else(const value: int64): IGpSQLBuilderCase; overload;
-    function  &End: IGpSQLBuilder;
+    function  &End: IGpSQLBuilderCase;
     function  Expression: IGpSQLBuilderExpression;
     function  &Or(const expression: array of const): IGpSQLBuilderCase; overload;
     function  &Or(const expression: string): IGpSQLBuilderCase; overload;
@@ -301,11 +304,9 @@ end; { CreateGpSQLBuilder }
 
 { TGpSQLBuilderCase }
 
-constructor TGpSQLBuilderCase.Create(const sqlBuilder: IGpSQLBuilder;
-  const expression: string);
+constructor TGpSQLBuilderCase.Create(const expression: string);
 begin
   inherited Create;
-  FSQLBuilder := sqlBuilder;
   FCaseExpression := expression;
   FWhenList := TList<TPair<IGpSQLSection,string>>.Create;
 end; { TGpSQLBuilderCase.Create }
@@ -347,11 +348,11 @@ begin
   Result := &Else(IntToStr(value));
 end; { TGpSQLBuilderCase.&Else }
 
-function TGpSQLBuilderCase.&End: IGpSQLBuilder;
+function TGpSQLBuilderCase.&End: IGpSQLBuilderCase;
 begin
   // TODO -oPrimoz Gabrijelcic : implement: TGpSQLBuilderCase
 //  (FSQLBuilder as IGpSQLBuilderEx).ActiveSection.Add(AsString, stList);
-  Result := FSQLBuilder;
+  Result := Self;
 end; { TGpSQLBuilderCase.&End }
 
 function TGpSQLBuilderCase.GetAsString: string;
@@ -518,6 +519,11 @@ begin
   Result := Self;
 end; { TGpSQLBuilderExpression.&Or }
 
+function TGpSQLBuilderExpression.GetAsString: string;
+begin
+  Result := CreateSQLSerializer(Expression).AsString;
+end; { TGpSQLBuilderExpression.GetAsString }
+
 function TGpSQLBuilderExpression.GetExpression: IGpSQLExpression;
 begin
   Result := FExpression;
@@ -579,7 +585,7 @@ end; { TGpSQLBuilder.AssertSection }
 
 function TGpSQLBuilder.&Case(const expression: string = ''): IGpSQLBuilderCase;
 begin
-  Result := TGpSQLBuilderCase.Create(Self, expression);
+  Result := TGpSQLBuilderCase.Create(expression);
 end; { TGpSQLBuilder.&Case }
 
 function TGpSQLBuilder.&Case(const expression: array of const): IGpSQLBuilderCase;
