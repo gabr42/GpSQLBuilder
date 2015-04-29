@@ -69,7 +69,7 @@ function SqlParamsToStr(const params: array of const): string;
 implementation
 
 uses
-  System.SysUtils;
+  System.SysUtils, GpSQLBuilder;
 
 type
   TGpSQLExpressionSerializer = class(TInterfacedObject, IGpSQLExpressionSerializer)
@@ -96,6 +96,7 @@ type
   strict private
     FAST : IGpSQLAST;
   strict protected
+    function  SerializeCase(const caseExpr: IGpSQLCase): string;
     function  SerializeColumns(const columns: IGpSQLColumns): string;
     function  SerializeDirection(direction: TGpSQLOrderByDirection): string;
     function  SerializeExpression(const expression: IGpSQLExpression): string;
@@ -290,6 +291,11 @@ begin
     SerializeOrderBy]);
 end; { TGpSQLSerializer.AsString }
 
+function TGpSQLSerializer.SerializeCase(const caseExpr: IGpSQLCase): string;
+begin
+  Result := CreateSQLSerializer(caseExpr).AsString;
+end; { TGpSQLSerializer.SerializeCase }
+
 function TGpSQLSerializer.SerializeColumns(const columns: IGpSQLColumns): string;
 var
   i         : integer;
@@ -360,7 +366,10 @@ end; { TGpSQLSerializer.SerializeJoinType }
 
 function TGpSQLSerializer.SerializeName(const name: IGpSQLName): string;
 begin
-  Result := name.Name;
+  if assigned(name.&Case) then
+    Result := '(' + SerializeCase(name.&Case) + ')'
+  else
+    Result := name.Name;
   if name.Alias <> '' then
     Result := Result + ' AS ' + name.Alias;
 end; { TGpSQLSerializer.SerializeName }

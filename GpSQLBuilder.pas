@@ -113,6 +113,7 @@ type
 
   IGpSQLBuilderCase = interface ['{1E379718-0959-455A-80AA-63BDA7C92F8C}']
     function  GetAsString: string;
+    function  GetCase: IGpSQLCase;
   //
     function  &And(const expression: array of const): IGpSQLBuilderCase; overload;
     function  &And(const expression: string): IGpSQLBuilderCase; overload;
@@ -127,7 +128,7 @@ type
     function  &Then(const value: int64): IGpSQLBuilderCase; overload;
     function  When(const condition: string): IGpSQLBuilderCase; overload;
     function  When(const condition: array of const): IGpSQLBuilderCase; overload;
-    function Expression: IGpSQLBuilderExpression;
+    property &Case: IGpSQLCase read GetCase;
     property AsString: string read GetAsString;
   end; { IGpSQLBuilderCase }
 
@@ -145,6 +146,7 @@ type
     function Column(const colName: string): IGpSQLBuilder; overload;
     function Column(const dbName, colName: string): IGpSQLBuilder; overload;
     function Column(const colName: array of const): IGpSQLBuilder; overload;
+    function Column(const caseExpr: IGpSQLBuilderCase): IGpSQLBuilder; overload;
     function Desc: IGpSQLBuilder;
     function First(num: integer): IGpSQLBuilder;
     function From(const dbName: string): IGpSQLBuilder;
@@ -157,8 +159,10 @@ type
     function &Or(const expression: array of const): IGpSQLBuilder; overload;
     function &Or(const expression: string): IGpSQLBuilder; overload;
     function &Or(const expression: IGpSQLBuilderExpression): IGpSQLBuilder; overload;
-    function OrderBy(const colName: string = ''): IGpSQLBuilder;
-    function Select(const colName: string = ''): IGpSQLBuilder;
+    function OrderBy(const colName: string = ''): IGpSQLBuilder; overload;
+    function OrderBy(const caseExpr: IGpSQLBuilderCase): IGpSQLBuilder; overload;
+    function Select(const colName: string = ''): IGpSQLBuilder; overload;
+    function Select(const caseExpr: IGpSQLBuilderCase): IGpSQLBuilder; overload;
     function Skip(num: integer): IGpSQLBuilder;
     function Where(const expression: string = ''): IGpSQLBuilder; overload;
     function Where(const expression: array of const): IGpSQLBuilder; overload;
@@ -215,6 +219,7 @@ type
     FLastExpr: IGpSQLBuilderExpression;
   strict protected
     function  GetAsString: string;
+    function GetCase: IGpSQLCase;
   public
     constructor Create(const expression: string);
     function  &And(const expression: array of const): IGpSQLBuilderCase; overload;
@@ -231,6 +236,7 @@ type
     function  &Then(const value: int64): IGpSQLBuilderCase; overload;
     function  When(const condition: string): IGpSQLBuilderCase; overload;
     function  When(const condition: array of const): IGpSQLBuilderCase; overload;
+    property &Case: IGpSQLCase read GetCase;
     property AsString: string read GetAsString;
   end; { TGpSQLBuilderCase }
 
@@ -266,6 +272,7 @@ type
     function  Column(const colName: string): IGpSQLBuilder; overload;
     function  Column(const dbName, colName: string): IGpSQLBuilder; overload;
     function  Column(const colName: array of const): IGpSQLBuilder; overload;
+    function  Column(const caseExpr: IGpSQLBuilderCase): IGpSQLBuilder; overload;
     function  Desc: IGpSQLBuilder;
     function  Expression(const term: string = ''): IGpSQLBuilderExpression; overload;
     function  Expression(const term: array of const): IGpSQLBuilderExpression; overload;
@@ -282,8 +289,10 @@ type
     function  &Or(const expression: array of const): IGpSQLBuilder; overload;
     function  &Or(const expression: string): IGpSQLBuilder; overload;
     function  &Or(const expression: IGpSQLBuilderExpression): IGpSQLBuilder; overload;
-    function  OrderBy(const colName: string = ''): IGpSQLBuilder;
-    function  Select(const colName: string = ''): IGpSQLBuilder;
+    function  OrderBy(const colName: string = ''): IGpSQLBuilder; overload;
+    function  OrderBy(const caseExpr: IGpSQLBuilderCase): IGpSQLBuilder; overload;
+    function  Select(const colName: string = ''): IGpSQLBuilder; overload;
+    function  Select(const caseExpr: IGpSQLBuilderCase): IGpSQLBuilder; overload;
     function  Skip(num: integer): IGpSQLBuilder;
     function  Where(const expression: string = ''): IGpSQLBuilder; overload;
     function  Where(const expression: array of const): IGpSQLBuilder; overload;
@@ -385,6 +394,11 @@ function TGpSQLBuilderCase.Expression: IGpSQLBuilderExpression;
 begin
   Result := TGpSQLBuilderExpression.Create;
 end; { TGpSQLBuilderCase.Expression }
+
+function TGpSQLBuilderCase.GetCase: IGpSQLCase;
+begin
+  Result := FCase;
+end; { TGpSQLBuilderCase.GetCase }
 
 function TGpSQLBuilderCase.When(const condition: array of const): IGpSQLBuilderCase;
 begin
@@ -607,6 +621,18 @@ begin
   Result := Column(SqlParamsToStr(colName));
 end; { TGpSQLBuilder.Column }
 
+function TGpSQLBuilder.Column(const caseExpr: IGpSQLBuilderCase): IGpSQLBuilder;
+begin
+  if assigned(FASTColumns) then begin
+    FASTName := FASTColumns.Add;
+    FASTName.&Case := caseExpr.&Case;
+  end
+  else
+    raise Exception.CreateFmt('Current section [%s] does not support COLUMN.',
+      [FASTSection.Name]);
+  Result := Self;
+end; { TGpSQLBuilder.Column }
+
 function TGpSQLBuilder.Desc: IGpSQLBuilder;
 begin
   AssertSection([secOrderBy]);
@@ -711,6 +737,12 @@ begin
     Result := Column(colName);
 end; { TGpSQLBuilder.OrderBy }
 
+function TGpSQLBuilder.OrderBy(const caseExpr: IGpSQLBuilderCase): IGpSQLBuilder;
+begin
+  SelectSection(secOrderBy);
+  Result := Column(caseExpr);
+end; { TGpSQLBuilder.OrderBy }
+
 function TGpSQLBuilder.&Or(const expression: array of const): IGpSQLBuilder;
 begin
   Result := &Or(SqlParamsToStr(expression));
@@ -740,6 +772,12 @@ begin
     Result := Self
   else
     Result := Column(colName);
+end; { TGpSQLBuilder.Select }
+
+function TGpSQLBuilder.Select(const caseExpr: IGpSQLBuilderCase): IGpSQLBuilder;
+begin
+  SelectSection(secSelect);
+  Result := Column(caseExpr);
 end; { TGpSQLBuilder.Select }
 
 procedure TGpSQLBuilder.SelectSection(section: TGpSQLSection);

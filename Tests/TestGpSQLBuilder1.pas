@@ -45,7 +45,9 @@ type
     [Test] procedure TestWhereAnd2;
     [Test] procedure TestWhereOr;
     [Test] procedure TestWhereAndOr;
-    [Test] procedure TestCaseIntegration;
+    [Test] procedure TestSelectCaseIntegration;
+    [Test] procedure TestSelectCaseAliasIntegration;
+    [Test] procedure TestOrderByCaseIntegration;
     [Test] procedure TestExpressionIntegration;
     [Test] procedure TestMixed;
     [Test] procedure TestSectionEmpty;
@@ -90,9 +92,12 @@ const
   COL_ALL_ALIAS = 'ALL';
   COL_1 = 'Column1';
   COL_2 = 'Column2';
+  COL_3 = 'Column3';
+  COL_4 = 'Column4';
   COL_DETAIL_ID = 'DetailID';
   COL_DETAIL_2 = 'Detail2';
   COL_SUB_ID = 'SubID';
+  COL_CASE_ALIAS = 'CS';
 
 { TTestGpSQLBuilder }
 
@@ -106,33 +111,51 @@ begin
   SQL := nil;
 end;
 
-procedure TTestGpSQLBuilder.TestCaseIntegration;
+procedure TTestGpSQLBuilder.TestSelectCaseIntegration;
 const
-  CExpected = 'SELECT CASE WHEN (Column2 < 0) THEN 0 WHEN (Column2 > 100) THEN 2 ' +
-    'ELSE 1 END FROM Test';
+  CExpected = 'SELECT (CASE WHEN Column2 < 0 THEN 0 WHEN Column2 > 100 THEN 2 ' +
+    'ELSE 1 END) FROM Test';
 begin
-//  SQL
-//    .Select(
-//      SQL.&Case
-//        .When([COL_2, '< 0']).&Then('0')
-//        .When([COL_2, '> 100']).&Then('2')
-//        .&Else('1')
-//      .&End)
-//    .From(DB_TEST);
+  SQL
+    .Select(
+      SQL.&Case
+        .When([COL_2, '< 0']).&Then('0')
+        .When([COL_2, '> 100']).&Then('2')
+        .&Else('1')
+      .&End)
+    .From(DB_TEST);
+  Assert.AreEqual(CExpected, SQL.AsString);
+end;
 
-//select(case)
-//orderby(case)
-//column(case)
+procedure TTestGpSQLBuilder.TestSelectCaseAliasIntegration;
+const
+  CExpected = 'SELECT (CASE WHEN Column2 < 0 THEN 0 WHEN Column2 > 100 THEN 2 ' +
+    'ELSE 1 END) AS CS FROM Test';
+begin
+  SQL
+    .Select(
+      SQL.&Case
+        .When([COL_2, '< 0']).&Then('0')
+        .When([COL_2, '> 100']).&Then('2')
+        .&Else('1')
+      .&End).&As(COL_CASE_ALIAS)
+    .From(DB_TEST);
+  Assert.AreEqual(CExpected, SQL.AsString);
+end;
 
-//SELECT BusinessEntityID, SalariedFlag
-//FROM HumanResources.Employee
-//ORDER BY CASE SalariedFlag WHEN 1 THEN BusinessEntityID END DESC,
-//         CASE WHEN SalariedFlag = 0 THEN BusinessEntityID END;
-
-//  Assert.AreEqual(CExpected, SQL.AsString);
-
-//.Func('Max', case, expression
-
+procedure TTestGpSQLBuilder.TestOrderByCaseIntegration;
+const
+  CExpected = 'SELECT * FROM Test ORDER BY (CASE WHEN Column2 < 0 THEN Column3 ELSE Column4 END)';
+begin
+  SQL
+    .Select.All
+    .From(DB_TEST)
+    .OrderBy(
+      SQL.&Case
+        .When([COL_2, '< 0']).&Then(COL_3)
+        .&Else(COL_4)
+      .&End);
+  Assert.AreEqual(CExpected, SQL.AsString);
 end;
 
 procedure TTestGpSQLBuilder.TestColumnAlias;

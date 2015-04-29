@@ -46,16 +46,21 @@ uses
 type
   TGpSQLStringType = (stNormal, stAnd, stOr, stList, stAppend); // TODO -oPrimoz Gabrijelcic : should not be necessary in 3.0
 
+  IGpSQLCase = interface;
+
   IGpSQLName = interface
   ['{B219D388-7E5E-4F71-A1F1-9AE4DDE754BC}']
     function  GetAlias: string;
+    function  GetCase: IGpSQLCase;
     function  GetName: string;
     procedure SetAlias(const value: string);
+    procedure SetCase(const value: IGpSQLCase);
     procedure SetName(const value: string);
   //
     procedure Clear;
     function  IsEmpty: boolean;
     property Name: string read GetName write SetName;
+    property &Case: IGpSQLCase read GetCase write SetCase;
     property Alias: string read GetAlias write SetAlias;
   end; { IGpSQLName }
 
@@ -262,16 +267,20 @@ type
   TGpSQLName = class(TInterfacedObject, IGpSQLName)
   strict private
     FAlias: string;
+    FCase : IGpSQLCase;
     FName : string;
   strict protected
     function  GetAlias: string;
+    function  GetCase: IGpSQLCase;
     function  GetName: string;
     procedure SetAlias(const value: string);
+    procedure SetCase(const value: IGpSQLCase);
     procedure SetName(const value: string);
   public
     procedure Clear;
     function  IsEmpty: boolean;
     property Name: string read GetName write SetName;
+    property &Case: IGpSQLCase read GetCase write SetCase;
     property Alias: string read GetAlias write SetAlias;
   end; { TGpSQLName }
 
@@ -586,6 +595,11 @@ begin
   Result := FAlias;
 end; { TGpSQLName.GetAlias }
 
+function TGpSQLName.GetCase: IGpSQLCase;
+begin
+  Result := FCase;
+end; { TGpSQLName.GetCase }
+
 function TGpSQLName.GetName: string;
 begin
   Result := FName;
@@ -600,6 +614,11 @@ procedure TGpSQLName.SetAlias(const value: string);
 begin
   FAlias := value;
 end; { TGpSQLName.SetAlias }
+
+procedure TGpSQLName.SetCase(const value: IGpSQLCase);
+begin
+  FCase := value;
+end; { TGpSQLName.SetCase }
 
 procedure TGpSQLName.SetName(const value: string);
 begin
