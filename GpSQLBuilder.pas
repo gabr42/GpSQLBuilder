@@ -31,14 +31,16 @@
 ///
 ///   Author            : Primoz Gabrijelcic
 ///   Creation date     : 2010-11-24
-///   Last modification : 2015-04-20
+///   Last modification : 2015-04-29
 ///   Version           : 3.0
 ///</para><para>
 ///   History:
-///     3.0:
+///     3.0: 2015-04-29
 ///       - Internal redesign: SQL is generated as an abstract syntax tree and only
 ///         converted to text when AsString is called. This allows implementing the
 ///         'pretty print' function and makes the code less ugly.
+///       - Added other Join types.
+///       - Case expression can be used in the OrderBy section.
 ///     2.02a: 2015-04-20
 ///       - Corrected SQL generation for LeftJoin().&As() construct.
 ///     2.02: 2015-04-05
@@ -133,45 +135,48 @@ type
   end; { IGpSQLBuilderCase }
 
   IGpSQLBuilder = interface ['{43EA3E34-A8DB-4257-A19F-030F404646E7}']
-    function GetAsString: string;
-    function GetAST: IGpSQLAST;
+    function &And(const expression: string): IGpSQLBuilder; overload;
   //
     function &And(const expression: array of const): IGpSQLBuilder; overload;
-    function &And(const expression: string): IGpSQLBuilder; overload;
     function &And(const expression: IGpSQLBuilderExpression): IGpSQLBuilder; overload;
-    function All: IGpSQLBuilder;
     function &As(const alias: string): IGpSQLBuilder;
     function &Case(const expression: string = ''): IGpSQLBuilderCase; overload;
     function &Case(const expression: array of const): IGpSQLBuilderCase; overload;
+    function &On(const expression: string): IGpSQLBuilder; overload;
+    function &On(const expression: array of const): IGpSQLBuilder; overload;
+    function &Or(const expression: string): IGpSQLBuilder; overload;
+    function &Or(const expression: array of const): IGpSQLBuilder; overload;
+    function &Or(const expression: IGpSQLBuilderExpression): IGpSQLBuilder; overload;
+    function All: IGpSQLBuilder;
+  //
+    function Clear: IGpSQLBuilder;
+    function ClearAll: IGpSQLBuilder;
     function Column(const colName: string): IGpSQLBuilder; overload;
     function Column(const dbName, colName: string): IGpSQLBuilder; overload;
     function Column(const colName: array of const): IGpSQLBuilder; overload;
     function Column(const caseExpr: IGpSQLBuilderCase): IGpSQLBuilder; overload;
     function Desc: IGpSQLBuilder;
+    function Expression(const term: string = ''): IGpSQLBuilderExpression; overload;
+    function Expression(const term: array of const): IGpSQLBuilderExpression; overload;
     function First(num: integer): IGpSQLBuilder;
     function From(const dbName: string): IGpSQLBuilder;
+    function FullJoin(const dbName: string): IGpSQLBuilder;
+    function GetAsString: string;
+    function GetAST: IGpSQLAST;
     function GroupBy(const colName: string = ''): IGpSQLBuilder;
     function Having(const expression: string = ''): IGpSQLBuilder; overload;
     function Having(const expression: array of const): IGpSQLBuilder; overload;
+    function InnerJoin(const dbName: string): IGpSQLBuilder;
+    function IsEmpty: boolean;
     function LeftJoin(const dbName: string): IGpSQLBuilder;
-    function &On(const expression: string): IGpSQLBuilder; overload;
-    function &On(const expression: array of const): IGpSQLBuilder; overload;
-    function &Or(const expression: array of const): IGpSQLBuilder; overload;
-    function &Or(const expression: string): IGpSQLBuilder; overload;
-    function &Or(const expression: IGpSQLBuilderExpression): IGpSQLBuilder; overload;
     function OrderBy(const colName: string = ''): IGpSQLBuilder; overload;
     function OrderBy(const caseExpr: IGpSQLBuilderCase): IGpSQLBuilder; overload;
+    function RightJoin(const dbName: string): IGpSQLBuilder;
     function Select(const colName: string = ''): IGpSQLBuilder; overload;
     function Select(const caseExpr: IGpSQLBuilderCase): IGpSQLBuilder; overload;
     function Skip(num: integer): IGpSQLBuilder;
     function Where(const expression: string = ''): IGpSQLBuilder; overload;
     function Where(const expression: array of const): IGpSQLBuilder; overload;
-  //
-    function Clear: IGpSQLBuilder;
-    function ClearAll: IGpSQLBuilder;
-    function Expression(const term: string = ''): IGpSQLBuilderExpression; overload;
-    function Expression(const term: array of const): IGpSQLBuilderExpression; overload;
-    function IsEmpty: boolean;
     property AsString: string read GetAsString;
     property AST: IGpSQLAST read GetAST;
   end; { IGpSQLBuilder }
@@ -187,11 +192,6 @@ uses
   GpSQLBuilder.Serialize;
 
 type
-  // TODO -oPrimoz Gabrijelcic : do we need it?
-  IGpSQLBuilderEx = interface ['{9F70DAA3-0900-4DFD-B967-C56D23513609}']
-//    function  ActiveSection: IGpSQLSection;
-  end; { IGpSQLBuilderEx }
-
   TGpSQLBuilderExpression = class(TInterfacedObject, IGpSQLBuilderExpression)
   strict private
     FExpression: IGpSQLExpression;
@@ -240,7 +240,7 @@ type
     property AsString: string read GetAsString;
   end; { TGpSQLBuilderCase }
 
-  TGpSQLBuilder = class(TInterfacedObject, IGpSQLBuilder, IGpSQLBuilderEx)
+  TGpSQLBuilder = class(TInterfacedObject, IGpSQLBuilder)
   strict private
   type
     TGpSQLSection = (secSelect, secJoin, secWhere, secGroupBy, secHaving, secOrderBy);
@@ -255,6 +255,7 @@ type
   strict protected
     procedure AssertHaveName;
     procedure AssertSection(sections: TGpSQLSections);
+    function  CreateJoin(joinType: TGpSQLJoinType; const dbName: string): IGpSQLBuilder;
     function  GetAsString: string;
     function  GetAST: IGpSQLAST;
     procedure SelectSection(section: TGpSQLSection);
@@ -278,11 +279,12 @@ type
     function  Expression(const term: array of const): IGpSQLBuilderExpression; overload;
     function  First(num: integer): IGpSQLBuilder;
     function  From(const dbName: string): IGpSQLBuilder;
+    function  FullJoin(const dbName: string): IGpSQLBuilder;
     function  GroupBy(const colName: string = ''): IGpSQLBuilder;
     function  Having(const expression: string = ''): IGpSQLBuilder; overload;
     function  Having(const expression: array of const): IGpSQLBuilder; overload;
+    function  InnerJoin(const dbName: string): IGpSQLBuilder;
     function  IsEmpty: boolean;
-    // TODO -oPrimoz Gabrijelcic : Add other joins
     function  LeftJoin(const dbName: string): IGpSQLBuilder;
     function  &On(const expression: string): IGpSQLBuilder; overload;
     function  &On(const expression: array of const): IGpSQLBuilder; overload;
@@ -291,6 +293,7 @@ type
     function  &Or(const expression: IGpSQLBuilderExpression): IGpSQLBuilder; overload;
     function  OrderBy(const colName: string = ''): IGpSQLBuilder; overload;
     function  OrderBy(const caseExpr: IGpSQLBuilderCase): IGpSQLBuilder; overload;
+    function  RightJoin(const dbName: string): IGpSQLBuilder;
     function  Select(const colName: string = ''): IGpSQLBuilder; overload;
     function  Select(const caseExpr: IGpSQLBuilderCase): IGpSQLBuilder; overload;
     function  Skip(num: integer): IGpSQLBuilder;
@@ -306,6 +309,57 @@ function CreateGpSQLBuilder: IGpSQLBuilder;
 begin
   Result := TGpSQLBuilder.Create;
 end; { CreateGpSQLBuilder }
+
+{ globals }
+
+function VarRecToString(const vr: TVarRec): string;
+const
+  BoolChars: array [boolean] of string = ('F', 'T');
+begin
+  case vr.VType of
+    vtInteger:    Result := IntToStr(vr.VInteger);
+    vtBoolean:    Result := BoolChars[vr.VBoolean];
+    vtChar:       Result := char(vr.VChar);
+    vtExtended:   Result := FloatToStr(vr.VExtended^);
+    vtString:     Result := string(vr.VString^);
+    vtPointer:    Result := IntToHex(integer(vr.VPointer),8);
+    vtPChar:      Result := string(vr.VPChar^);
+    vtObject:     Result := vr.VObject.ClassName;
+    vtClass:      Result := vr.VClass.ClassName;
+    vtWideChar:   Result := string(vr.VWideChar);
+    vtPWideChar:  Result := string(vr.VPWideChar^);
+    vtAnsiString: Result := string(vr.VAnsiString);
+    vtCurrency:   Result := CurrToStr(vr.VCurrency^);
+    vtVariant:    Result := string(vr.VVariant^);
+    vtWideString: Result := string(WideString(vr.VWideString));
+    vtInt64:      Result := IntToStr(vr.VInt64^);
+    {$IFDEF Unicode}
+    vtUnicodeString: Result := string(vr.VUnicodeString);
+    {$ENDIF}
+    else raise Exception.Create('VarRecToString: Unsupported parameter type');
+  end;
+end; { VarRecToString }
+
+function SqlParamsToStr(const params: array of const): string;
+var
+  iParam: integer;
+  lastCh: char;
+  sParam: string;
+begin
+  Result := '';
+  for iParam := Low(params) to High(params) do begin
+    sParam := VarRecToString(params[iparam]);
+    if Result = '' then
+      lastCh := ' '
+    else
+      lastCh := Result[Length(Result)];
+    if (lastCh <> '.') and (lastCh <> '(') and (lastCh <> ' ') and (lastCh <> ':') and
+       (sParam <> ',') and (sParam <> '.') and (sParam <> ')')
+    then
+      Result := Result + ' ';
+    Result := Result + sParam;
+  end;
+end; { SqlParamsToStr }
 
 { TGpSQLBuilderCase }
 
@@ -379,7 +433,7 @@ end; { TGpSQLBuilderCase.&Or }
 
 function TGpSQLBuilderCase.&Then(const value: string): IGpSQLBuilderCase;
 begin
-  // TODO 1 -oPrimoz Gabrijelcic : Check that WhenList.Count > 0
+  Assert(FCase.WhenList.Count > 0, 'TGpSQLBuilderCase.&Then: Missing When');
   FLastExpr := TGpSQLBuilderExpression.Create(value);
   FCase.WhenList[FCase.WhenList.Count-1].ThenExpression := FLastExpr.Expression;
   Result := Self;
@@ -407,8 +461,7 @@ end; { TGpSQLBuilderCase.When }
 
 function TGpSQLBuilderCase.When(const condition: string): IGpSQLBuilderCase;
 var
-  expr: IGpSQLExpression;
-  wt  : IGpSQLCaseWhenThen;
+  wt: IGpSQLCaseWhenThen;
 begin
   FLastExpr := TGpSQLBuilderExpression.Create(condition);
   wt := FCase.WhenList.Add;
@@ -552,9 +605,6 @@ begin
 end; { TGpSQLBuilder.&And }
 
 function TGpSQLBuilder.&As(const alias: string): IGpSQLBuilder;
-var
-  columns   : IGpSQLColumns;
-  pushBefore: string;
 begin
   AssertSection([secSelect, secJoin]);
   AssertHaveName;
@@ -592,8 +642,6 @@ begin
 end; { TGpSQLBuilder.Clear }
 
 function TGpSQLBuilder.ClearAll: IGpSQLBuilder;
-var
-  section: TGpSQLSection;
 begin
   FAST.Clear;
   Result := Self;
@@ -636,7 +684,7 @@ end; { TGpSQLBuilder.Column }
 function TGpSQLBuilder.Desc: IGpSQLBuilder;
 begin
   AssertSection([secOrderBy]);
-  // TODO 1 -oPrimoz Gabrijelcic : Assert at least one column
+  Assert(FASTColumns.Count > 0, 'TGpSQLBuilder.Desc: No columns set up yet');
   (FASTColumns[FASTColumns.Count - 1] as IGpSQLOrderByColumn).Direction := dirDescending;
   Result := Self;
 end; { TGpSQLBuilder.Desc }
@@ -670,6 +718,11 @@ begin
   Result := Self;
 end; { TGpSQLBuilder.From }
 
+function TGpSQLBuilder.FullJoin(const dbName: string): IGpSQLBuilder;
+begin
+  Result := CreateJoin(jtFull, dbName);
+end; { TGpSQLBuilder.FullJoin }
+
 function TGpSQLBuilder.GetAsString: string;
 begin
   Result := CreateSQLSerializer(AST).AsString;
@@ -698,24 +751,19 @@ begin
   Result := Having(SqlParamsToStr(expression));
 end; { TGpSQLBuilder.Having }
 
+function TGpSQLBuilder.InnerJoin(const dbName: string): IGpSQLBuilder;
+begin
+  Result := CreateJoin(jtInner, dbName);
+end; { TGpSQLBuilder.InnerJoin }
+
 function TGpSQLBuilder.IsEmpty: boolean;
 begin
   Result := FASTSection.IsEmpty;
 end; { TGpSQLBuilder.IsEmpty }
 
 function TGpSQLBuilder.LeftJoin(const dbName: string): IGpSQLBuilder;
-var
-  join: IGpSQLJoin;
 begin
-  FActiveSection := secJoin;
-  join := FAST.Joins.Add;
-  join.JoinType := jtLeft;
-  FASTName := join.JoinedTable;
-  FASTName.Name := dbName;
-  FASTSection := join;
-  FASTColumns := nil;
-  FActiveExpr := TGpSQLBuilderExpression.Create(join.Condition);
-  Result := Self;
+  Result := CreateJoin(jtLeft, dbName);
 end; { TGpSQLBuilder.LeftJoin }
 
 function TGpSQLBuilder.&On(const expression: string): IGpSQLBuilder;
@@ -743,6 +791,11 @@ begin
   Result := Column(caseExpr);
 end; { TGpSQLBuilder.OrderBy }
 
+function TGpSQLBuilder.RightJoin(const dbName: string): IGpSQLBuilder;
+begin
+  Result := CreateJoin(jtRight, dbName);
+end; { TGpSQLBuilder.RightJoin }
+
 function TGpSQLBuilder.&Or(const expression: array of const): IGpSQLBuilder;
 begin
   Result := &Or(SqlParamsToStr(expression));
@@ -759,6 +812,22 @@ begin
   FActiveExpr.&Or(expression.Expression);
   Result := Self;
 end; { TGpSQLBuilder.&Or }
+
+function TGpSQLBuilder.CreateJoin(joinType: TGpSQLJoinType; const dbName: string):
+  IGpSQLBuilder;
+var
+  join: IGpSQLJoin;
+begin
+  FActiveSection := secJoin;
+  join := FAST.Joins.Add;
+  join.JoinType := joinType;
+  FASTName := join.JoinedTable;
+  FASTName.Name := dbName;
+  FASTSection := join;
+  FASTColumns := nil;
+  FActiveExpr := TGpSQLBuilderExpression.Create(join.Condition);
+  Result := Self;
+end; { TGpSQLBuilder.CreateJoin }
 
 function TGpSQLBuilder.GetAST: IGpSQLAST;
 begin
