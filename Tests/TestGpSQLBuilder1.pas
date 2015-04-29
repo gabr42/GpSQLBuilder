@@ -33,6 +33,9 @@ type
     [Test] procedure TestLeftJoinAnd;
     [Test] procedure TestLeftJoinAlias;
     [Test] procedure TestDoubleLeftJoin;
+    [Test] procedure TestRightJoin;
+    [Test] procedure TestFullJoin;
+    [Test] procedure TestInnerJoin;
     [Test] procedure TestGroupBy;
     [Test] procedure TestGroupByHaving;
     [Test] procedure TestOrderBy;
@@ -278,6 +281,39 @@ begin
      .LeftJoin(DB_DETAIL)
        .On([COL_1, '=', COL_DETAIL_ID])
        .&And([COL_DETAIL_2, '> 0']);
+  Assert.AreEqual(CExpected, SQL.AsString);
+end;
+
+procedure TTestGpSQLBuilder.TestRightJoin;
+const
+  CExpected = 'SELECT * FROM Test RIGHT JOIN Detail ON Column1 = DetailID';
+begin
+  SQL
+    .Select.All
+    .From(DB_TEST)
+     .RightJoin(DB_DETAIL).On([COL_1, '=', COL_DETAIL_ID]);
+  Assert.AreEqual(CExpected, SQL.AsString);
+end;
+
+procedure TTestGpSQLBuilder.TestFullJoin;
+const
+  CExpected = 'SELECT * FROM Test FULL JOIN Detail ON Column1 = DetailID';
+begin
+  SQL
+    .Select.All
+    .From(DB_TEST)
+     .FullJoin(DB_DETAIL).On([COL_1, '=', COL_DETAIL_ID]);
+  Assert.AreEqual(CExpected, SQL.AsString);
+end;
+
+procedure TTestGpSQLBuilder.TestInnerJoin;
+const
+  CExpected = 'SELECT * FROM Test INNER JOIN Detail ON Column1 = DetailID';
+begin
+  SQL
+    .Select.All
+    .From(DB_TEST)
+     .InnerJoin(DB_DETAIL).On([COL_1, '=', COL_DETAIL_ID]);
   Assert.AreEqual(CExpected, SQL.AsString);
 end;
 

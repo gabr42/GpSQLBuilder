@@ -31,9 +31,11 @@
 ///
 ///   Author            : Primoz Gabrijelcic
 ///   Creation date     : 2015-04-20
-///   Last modification : 2015-04-20
-///   Version           : 0.1
+///   Last modification : 2015-04-29
+///   Version           : 1.0
 ///   History:
+///     1.0: 2015-04-29
+///       - Released.
 ///</para></remarks>
 
 unit GpSQLBuilder.AST;
@@ -44,8 +46,6 @@ uses
   System.Generics.Collections;
 
 type
-  TGpSQLStringType = (stNormal, stAnd, stOr, stList, stAppend); // TODO -oPrimoz Gabrijelcic : should not be necessary in 3.0
-
   IGpSQLCase = interface;
 
   IGpSQLName = interface
@@ -259,9 +259,7 @@ type
 implementation
 
 uses
-  System.SysUtils,
-  System.StrUtils,        // TODO -oPrimoz Gabrijelcic : Temporary, AST must not depend on serialization
-  GpSQLBuilder.Serialize; // TODO -oPrimoz Gabrijelcic : Temporary, AST must not depend on serialization
+  System.SysUtils;
 
 type
   TGpSQLName = class(TInterfacedObject, IGpSQLName)

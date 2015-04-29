@@ -31,12 +31,12 @@
 ///
 ///   Author            : Primoz Gabrijelcic
 ///   Creation date     : 2015-04-20
-///   Last modification : 2015-04-20
-///   Version           : 0.1
+///   Last modification : 2015-04-29
+///   Version           : 1.0
 ///</para><para>
 ///   History:
-///     0.1: 2015-04-20
-///       - Created.
+///     1.0: 2015-04-29
+///       - Released.
 ///</para></remarks>
 
 unit GpSQLBuilder.Serialize;
@@ -63,13 +63,11 @@ function CreateSQLSerializer(const expr: IGpSQLExpression): IGpSQLExpressionSeri
 function CreateSQLSerializer(const caseExpr: IGpSQLCase): IGpSQLCaseSerializer; overload;
 function CreateSQLSerializer(const ast: IGpSQLAST): IGpSQLASTSerializer; overload;
 
-// TODO -oPrimoz Gabrijelcic : temporary solution
-function SqlParamsToStr(const params: array of const): string;
-
 implementation
 
 uses
-  System.SysUtils, GpSQLBuilder;
+  System.SysUtils,
+  GpSQLBuilder;
 
 type
   TGpSQLExpressionSerializer = class(TInterfacedObject, IGpSQLExpressionSerializer)
@@ -116,34 +114,6 @@ type
 
 { globals }
 
-function VarRecToString(const vr: TVarRec): string;
-const
-  BoolChars: array [boolean] of string = ('F', 'T');
-begin
-  case vr.VType of
-    vtInteger:    Result := IntToStr(vr.VInteger);
-    vtBoolean:    Result := BoolChars[vr.VBoolean];
-    vtChar:       Result := char(vr.VChar);
-    vtExtended:   Result := FloatToStr(vr.VExtended^);
-    vtString:     Result := string(vr.VString^);
-    vtPointer:    Result := IntToHex(integer(vr.VPointer),8);
-    vtPChar:      Result := string(vr.VPChar^);
-    vtObject:     Result := vr.VObject.ClassName;
-    vtClass:      Result := vr.VClass.ClassName;
-    vtWideChar:   Result := string(vr.VWideChar);
-    vtPWideChar:  Result := string(vr.VPWideChar^);
-    vtAnsiString: Result := string(vr.VAnsiString);
-    vtCurrency:   Result := CurrToStr(vr.VCurrency^);
-    vtVariant:    Result := string(vr.VVariant^);
-    vtWideString: Result := string(WideString(vr.VWideString));
-    vtInt64:      Result := IntToStr(vr.VInt64^);
-    {$IFDEF Unicode}
-    vtUnicodeString: Result := string(vr.VUnicodeString);
-    {$ENDIF}
-    else raise Exception.Create('VarRecToString: Unsupported parameter type');
-  end;
-end; { VarRecToString }
-
 function AddToList(const aList, delim, newElement: string): string;
 begin
   Result := aList;
@@ -163,27 +133,6 @@ begin
 end; { Concatenate }
 
 { exports }
-
-function SqlParamsToStr(const params: array of const): string;
-var
-  iParam: integer;
-  lastCh: char;
-  sParam: string;
-begin
-  Result := '';
-  for iParam := Low(params) to High(params) do begin
-    sParam := VarRecToString(params[iparam]);
-    if Result = '' then
-      lastCh := ' '
-    else
-      lastCh := Result[Length(Result)];
-    if (lastCh <> '.') and (lastCh <> '(') and (lastCh <> ' ') and (lastCh <> ':') and
-       (sParam <> ',') and (sParam <> '.') and (sParam <> ')')
-    then
-      Result := Result + ' ';
-    Result := Result + sParam;
-  end;
-end; { SqlParamsToStr }
 
 function CreateSQLSerializer(const expr: IGpSQLExpression): IGpSQLExpressionSerializer;
 begin
