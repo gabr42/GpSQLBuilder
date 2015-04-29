@@ -33,6 +33,9 @@ type
     [Test] procedure TestLeftJoinAnd;
     [Test] procedure TestLeftJoinAlias;
     [Test] procedure TestDoubleLeftJoin;
+    [Test] procedure TestRightJoin;
+    [Test] procedure TestFullJoin;
+    [Test] procedure TestInnerJoin;
     [Test] procedure TestGroupBy;
     [Test] procedure TestGroupByHaving;
     [Test] procedure TestOrderBy;
@@ -45,9 +48,10 @@ type
     [Test] procedure TestWhereAnd2;
     [Test] procedure TestWhereOr;
     [Test] procedure TestWhereAndOr;
-    [Test] procedure TestCaseIntegration;
+    [Test] procedure TestSelectCaseIntegration;
+    [Test] procedure TestSelectCaseAliasIntegration;
+    [Test] procedure TestOrderByCaseIntegration;
     [Test] procedure TestExpressionIntegration;
-    [Test] procedure TestExpressionIntegration2;
     [Test] procedure TestMixed;
     [Test] procedure TestSectionEmpty;
     [Test] procedure TestSectionEmpty2;
@@ -77,7 +81,8 @@ type
 implementation
 
 uses
-  System.SysUtils;
+  System.SysUtils,
+  GpSQLBuilder.AST;
 
 const
   //test table names
@@ -90,9 +95,12 @@ const
   COL_ALL_ALIAS = 'ALL';
   COL_1 = 'Column1';
   COL_2 = 'Column2';
+  COL_3 = 'Column3';
+  COL_4 = 'Column4';
   COL_DETAIL_ID = 'DetailID';
   COL_DETAIL_2 = 'Detail2';
   COL_SUB_ID = 'SubID';
+  COL_CASE_ALIAS = 'CS';
 
 { TTestGpSQLBuilder }
 
@@ -106,19 +114,50 @@ begin
   SQL := nil;
 end;
 
-procedure TTestGpSQLBuilder.TestCaseIntegration;
+procedure TTestGpSQLBuilder.TestSelectCaseIntegration;
 const
-  CExpected = 'SELECT CASE WHEN (Column2 < 0) THEN 0 WHEN (Column2 > 100) THEN 2 ' +
-    'ELSE 1 END FROM Test';
+  CExpected = 'SELECT (CASE WHEN Column2 < 0 THEN 0 WHEN Column2 > 100 THEN 2 ' +
+    'ELSE 1 END) FROM Test';
 begin
   SQL
-    .Select
-      .&Case
+    .Select(
+      SQL.&Case
         .When([COL_2, '< 0']).&Then('0')
         .When([COL_2, '> 100']).&Then('2')
         .&Else('1')
-      .&End
+      .&End)
     .From(DB_TEST);
+  Assert.AreEqual(CExpected, SQL.AsString);
+end;
+
+procedure TTestGpSQLBuilder.TestSelectCaseAliasIntegration;
+const
+  CExpected = 'SELECT (CASE WHEN Column2 < 0 THEN 0 WHEN Column2 > 100 THEN 2 ' +
+    'ELSE 1 END) AS CS FROM Test';
+begin
+  SQL
+    .Select(
+      SQL.&Case
+        .When([COL_2, '< 0']).&Then('0')
+        .When([COL_2, '> 100']).&Then('2')
+        .&Else('1')
+      .&End).&As(COL_CASE_ALIAS)
+    .From(DB_TEST);
+  Assert.AreEqual(CExpected, SQL.AsString);
+end;
+
+procedure TTestGpSQLBuilder.TestOrderByCaseIntegration;
+const
+  CExpected = 'SELECT * FROM Test ORDER BY (CASE WHEN Column2 < 0 THEN Column3 ELSE Column4 END)';
+begin
+  SQL
+    .Select.All
+    .From(DB_TEST)
+    .OrderBy(
+      SQL.&Case
+        .When([COL_2, '< 0']).&Then(COL_3)
+        .&Else(COL_4)
+      .&End);
   Assert.AreEqual(CExpected, SQL.AsString);
 end;
 
@@ -144,8 +183,8 @@ end;
 
 procedure TTestGpSQLBuilder.TestDoubleLeftJoin;
 const
-  CExpected = 'SELECT * FROM Test LEFT JOIN Detail ON (Column1 = DetailID) ' +
-    'LEFT JOIN Sub ON (DetailID = SubID)';
+  CExpected = 'SELECT * FROM Test LEFT JOIN Detail ON Column1 = DetailID ' +
+    'LEFT JOIN Sub ON DetailID = SubID';
 begin
   SQL
     .Select.All
@@ -162,22 +201,7 @@ end;
 
 procedure TTestGpSQLBuilder.TestExpressionIntegration;
 const
-  CExpected = 'SELECT * FROM Test WHERE (Column1 IS NULL) AND (((Column2 < 0) OR (Column2 > 10)))';
-begin
-  SQL
-    .Select.All
-    .From(DB_TEST)
-    .Where
-      .&And([COL_1, 'IS NULL'])
-      .&And(
-        SQL.Expression([COL_2, '< 0'])
-         .&Or([COL_2, '> 10']).AsString);
-  Assert.AreEqual(CExpected, SQL.AsString);
-end;
-
-procedure TTestGpSQLBuilder.TestExpressionIntegration2;
-const
-  CExpected = 'SELECT * FROM Test WHERE (Column1 IS NULL) AND (((Column2 < 0) OR (Column2 > 10)))';
+  CExpected = 'SELECT * FROM Test WHERE (Column1 IS NULL) AND ((Column2 < 0) OR (Column2 > 10))';
 begin
   SQL
     .Select.All
@@ -194,28 +218,28 @@ procedure TTestGpSQLBuilder.TestGroupBy;
 const
   CExpected = 'SELECT * FROM Test GROUP BY Column2';
 begin
- SQL
-   .Select.All
-   .From(DB_TEST)
-   .GroupBy(COL_2);
+  SQL
+    .Select.All
+    .From(DB_TEST)
+    .GroupBy(COL_2);
   Assert.AreEqual(CExpected, SQL.AsString);
 end;
 
 procedure TTestGpSQLBuilder.TestGroupByHaving;
 const
-  CExpected = 'SELECT * FROM Test GROUP BY Column2 HAVING (Column2 > 0)';
+  CExpected = 'SELECT * FROM Test GROUP BY Column2 HAVING Column2 > 0';
 begin
- SQL
-   .Select.All
-   .From(DB_TEST)
-   .GroupBy(COL_2)
-   .Having([COL_2, '> 0']);
+  SQL
+    .Select.All
+    .From(DB_TEST)
+    .GroupBy(COL_2)
+    .Having([COL_2, '> 0']);
   Assert.AreEqual(CExpected, SQL.AsString);
 end;
 
 procedure TTestGpSQLBuilder.TestLeftJoin;
 const
-  CExpected = 'SELECT * FROM Test LEFT JOIN Detail ON (Column1 = DetailID)';
+  CExpected = 'SELECT * FROM Test LEFT JOIN Detail ON Column1 = DetailID';
 begin
   SQL
     .Select.All
@@ -226,7 +250,7 @@ end;
 
 procedure TTestGpSQLBuilder.TestLeftJoin2;
 const
-  CExpected = 'SELECT * FROM Test LEFT JOIN Detail ON (Column1 = DetailID)';
+  CExpected = 'SELECT * FROM Test LEFT JOIN Detail ON Column1 = DetailID';
 begin
   SQL
     .Select.All
@@ -237,7 +261,7 @@ end;
 
 procedure TTestGpSQLBuilder.TestLeftJoinAlias;
 const
-  CExpected = 'SELECT * FROM Test LEFT JOIN Detail AS DetailAlias ON (Column1 = DetailID)';
+  CExpected = 'SELECT * FROM Test LEFT JOIN Detail AS DetailAlias ON Column1 = DetailID';
 begin
   SQL
     .Select.All
@@ -260,13 +284,46 @@ begin
   Assert.AreEqual(CExpected, SQL.AsString);
 end;
 
+procedure TTestGpSQLBuilder.TestRightJoin;
+const
+  CExpected = 'SELECT * FROM Test RIGHT JOIN Detail ON Column1 = DetailID';
+begin
+  SQL
+    .Select.All
+    .From(DB_TEST)
+     .RightJoin(DB_DETAIL).On([COL_1, '=', COL_DETAIL_ID]);
+  Assert.AreEqual(CExpected, SQL.AsString);
+end;
+
+procedure TTestGpSQLBuilder.TestFullJoin;
+const
+  CExpected = 'SELECT * FROM Test FULL JOIN Detail ON Column1 = DetailID';
+begin
+  SQL
+    .Select.All
+    .From(DB_TEST)
+     .FullJoin(DB_DETAIL).On([COL_1, '=', COL_DETAIL_ID]);
+  Assert.AreEqual(CExpected, SQL.AsString);
+end;
+
+procedure TTestGpSQLBuilder.TestInnerJoin;
+const
+  CExpected = 'SELECT * FROM Test INNER JOIN Detail ON Column1 = DetailID';
+begin
+  SQL
+    .Select.All
+    .From(DB_TEST)
+     .InnerJoin(DB_DETAIL).On([COL_1, '=', COL_DETAIL_ID]);
+  Assert.AreEqual(CExpected, SQL.AsString);
+end;
+
 procedure TTestGpSQLBuilder.TestMixed;
 const
   CExpected = 'SELECT * FROM Test WHERE (Column1 IS NOT NULL) AND (Column2 > 0)';
 begin
-  SQL.From(DB_TEST);
-  SQL.Where([COL_1, 'IS NOT NULL']);
   SQL.Select.All;
+  SQL.Where([COL_1, 'IS NOT NULL']);
+  SQL.Select.From(DB_TEST);
   SQL.Where.&And([COL_2, '> 0']);
   Assert.AreEqual(CExpected, SQL.AsString);
 end;
@@ -360,7 +417,7 @@ procedure TTestGpSQLBuilder.TestSectionEmpty3;
 begin
   SQL.Select.All;
   SQL.Select.Clear;
-  SQL.From(DB_TEST);
+  SQL.GroupBy(COL_1);
   Assert.IsTrue(SQL.Select.IsEmpty);
 end;
 
@@ -468,7 +525,7 @@ end;
 
 procedure TTestGpSQLBuilder.TestSelectWhere;
 const
-  CExpected = 'SELECT * FROM Test WHERE (Column2 > 0)';
+  CExpected = 'SELECT * FROM Test WHERE Column2 > 0';
 begin
   SQL
     .Select.All
@@ -533,39 +590,42 @@ end;
 
 procedure TTestGpSQLBuilderCase.TestCase;
 const
-  CExpected = 'CASE WHEN (Column2 < 0) THEN 0 WHEN (Column2 > 100) THEN 2 ELSE 1 END';
+  CExpected = 'CASE WHEN Column2 < 0 THEN 0 WHEN Column2 > 100 THEN 2 ELSE 1 END';
 var
   SQLCase: IGpSQLBuilderCase;
 begin
   SQLCase := CreateGpSQLBuilder.&Case
     .When([COL_2, '< 0']).&Then('0')
     .When([COL_2, '> 100']).&Then('2')
-    .&Else('1');
+    .&Else('1')
+    .&End;
   Assert.AreEqual(CExpected, SQLCase.AsString);
 end;
 
 procedure TTestGpSQLBuilderCase.TestCase2;
 const
-  CExpected = 'CASE WHEN (Column2 < 0) THEN 0 WHEN (Column2 > 100) THEN 2 ELSE 1 END';
+  CExpected = 'CASE WHEN Column2 < 0 THEN 0 WHEN Column2 > 100 THEN 2 ELSE 1 END';
 var
   SQLCase: IGpSQLBuilderCase;
 begin
   SQLCase := CreateGpSQLBuilder.&Case
     .When([COL_2, '< 0']).&Then(0)
     .When([COL_2, '> 100']).&Then(2)
-    .&Else(1);
+    .&Else(1)
+    .&End;
   Assert.AreEqual(CExpected, SQLCase.AsString);
 end;
 
 procedure TTestGpSQLBuilderCase.TestCase3;
 const
-  CExpected = 'CASE Column2 WHEN (0) THEN ''A'' WHEN (1) THEN ''B'' END';
+  CExpected = 'CASE Column2 WHEN 0 THEN ''A'' WHEN 1 THEN ''B'' END';
 var
   SQLCase: IGpSQLBuilderCase;
 begin
   SQLCase := CreateGpSQLBuilder.&Case(COL_2)
     .When([0]).&Then('''A''')
-    .When([1]).&Then('''B''');
+    .When([1]).&Then('''B''')
+    .&End;
   Assert.AreEqual(CExpected, SQLCase.AsString);
 end;
 
@@ -583,7 +643,8 @@ begin
     .When([COL_2, '> 100'])
       .&Or([COL_1, 'IS NULL'])
       .&Then(2)
-    .&Else(1);
+    .&Else(1)
+    .&End;
   Assert.AreEqual(CExpected, SQLCase.AsString);
 end;
 
@@ -599,6 +660,11 @@ begin
   expr
     .&And([COL_1, 'IS NOT NULL'])
     .&And([COL_2, '> 0']);
+  Assert.IsTrue(expr.Expression.Operation = opAnd);
+  Assert.IsTrue(expr.Expression.Left.Operation = opNone);
+  Assert.AreEqual(expr.Expression.Left.Term, 'Column1 IS NOT NULL');
+  Assert.IsTrue(expr.Expression.Right.Operation = opNone);
+  Assert.AreEqual(expr.Expression.Right.Term, 'Column2 > 0');
   Assert.AreEqual(CExpected, expr.AsString);
 end;
 
@@ -610,6 +676,11 @@ var
 begin
   expr := CreateGpSQLBuilder.Expression([COL_1, 'IS NOT NULL']);
   expr.&And([COL_2, '> 0']);
+  Assert.IsTrue(expr.Expression.Operation = opAnd);
+  Assert.IsTrue(expr.Expression.Left.Operation = opNone);
+  Assert.AreEqual(expr.Expression.Left.Term, 'Column1 IS NOT NULL');
+  Assert.IsTrue(expr.Expression.Right.Operation = opNone);
+  Assert.AreEqual(expr.Expression.Right.Term, 'Column2 > 0');
   Assert.AreEqual(CExpected, expr.AsString);
 end;
 
@@ -625,6 +696,13 @@ begin
       .&Or([COL_1, '= 0'])
     .&And([COL_2, '> 0'])
       .&Or([COL_2, '< 10']);
+  Assert.IsTrue(expr.Expression.Operation = opAnd);
+  Assert.IsTrue(expr.Expression.Left.Operation = opOr);
+  Assert.AreEqual(expr.Expression.Left.Left.Term, 'Column1 IS NULL');
+  Assert.AreEqual(expr.Expression.Left.Right.Term, 'Column1 = 0');
+  Assert.IsTrue(expr.Expression.Right.Operation = opOr);
+  Assert.AreEqual(expr.Expression.Right.Left.Term, 'Column2 > 0');
+  Assert.AreEqual(expr.Expression.Right.Right.Term, 'Column2 < 10');
   Assert.AreEqual(CExpected, expr.AsString);
 end;
 
@@ -636,6 +714,11 @@ var
 begin
   expr := CreateGpSQLBuilder.Expression([COL_1, 'IS NOT NULL']);
   expr.&Or([COL_2, '> 0']);
+  Assert.IsTrue(expr.Expression.Operation = opOr);
+  Assert.IsTrue(expr.Expression.Left.Operation = opNone);
+  Assert.AreEqual(expr.Expression.Left.Term, 'Column1 IS NOT NULL');
+  Assert.IsTrue(expr.Expression.Right.Operation = opNone);
+  Assert.AreEqual(expr.Expression.Right.Term, 'Column2 > 0');
   Assert.AreEqual(CExpected, expr.AsString);
 end;
 
