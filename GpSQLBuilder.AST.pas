@@ -92,6 +92,39 @@ type
     property Right: IGpSQLExpression read GetRight write SetRight;
   end; { IGpSQLExpression }
 
+  IGpSQLCaseWhenThen = interface ['{ADEF8C82-FDF5-4960-9F77-EC0A57AA082E}']
+    function  GetThenExpression: IGpSQLExpression;
+    function  GetWhenExpression: IGpSQLExpression;
+    procedure SetThenExpression(const value: IGpSQLExpression);
+    procedure SetWhenExpression(const value: IGpSQLExpression);
+  //
+    property WhenExpression: IGpSQLExpression read GetWhenExpression write SetWhenExpression;
+    property ThenExpression: IGpSQLExpression read GetThenExpression write SetThenExpression;
+  end; { IGpSQLCaseWhenThen }
+
+  IGpSQLCaseWhenList = interface ['{0D18F711-5002-421D-A1CA-8D1D36F4653E}']
+    function  GetWhenThen(idx: integer): IGpSQLCaseWhenThen;
+    procedure SetWhenThen(idx: integer; const value: IGpSQLCaseWhenThen);
+  //
+    function  Add: IGpSQLCaseWhenThen; overload;
+    function  Add(const whenThen: IGpSQLCaseWhenThen): integer; overload;
+    function  Count: integer;
+    property WhenThen[idx: integer]: IGpSQLCaseWhenThen read GetWhenThen write SetWhenThen; default;
+  end; { IGpSQLCaseWhenList }
+
+  IGpSQLCase = interface ['{F6F45A4A-1108-4BA6-92F5-7A7386E2388C}']
+    function  GetCaseExpression: IGpSQLExpression;
+    function  GetElseExpression: IGpSQLExpression;
+    function  GetWhenList: IGpSQLCaseWhenList;
+    procedure SetCaseExpression(const value: IGpSQLExpression);
+    procedure SetElseExpression(const value: IGpSQLExpression);
+    procedure SetWhenList(const value: IGpSQLCaseWhenList);
+  //
+    property CaseExpression: IGpSQLExpression read GetCaseExpression write SetCaseExpression;
+    property WhenList: IGpSQLCaseWhenList read GetWhenList write SetWhenList;
+    property ElseExpression: IGpSQLExpression read GetElseExpression write SetElseExpression;
+  end; { IGpSQLCase }
+
   IGpSQLSection = interface ['{BE0A0FF9-AD70-40C5-A1C2-7FA2F7061153}']
     function  GetName: string;
   //
@@ -216,6 +249,7 @@ type
 
   function CreateSQLAST: IGpSQLAST;
   function CreateSQLExpression: IGpSQLExpression;
+  function CreateSQLCase: IGpSQLCase;
 
 implementation
 
@@ -281,6 +315,55 @@ type
     property Left: IGpSQLExpression read GetLeft write SetLeft;
     property Right: IGpSQLExpression read GetRight write SetRight;
   end; { TGpSQLExpression }
+
+  TGpSQLCaseWhenThen = class(TInterfacedObject, IGpSQLCaseWhenThen)
+  strict private
+    FThenExpression: IGpSQLExpression;
+    FWhenExpression: IGpSQLExpression;
+  strict protected
+    function  GetThenExpression: IGpSQLExpression;
+    function  GetWhenExpression: IGpSQLExpression;
+    procedure SetThenExpression(const value: IGpSQLExpression);
+    procedure SetWhenExpression(const value: IGpSQLExpression);
+  public
+    constructor Create;
+    property WhenExpression: IGpSQLExpression read GetWhenExpression write SetWhenExpression;
+    property ThenExpression: IGpSQLExpression read GetThenExpression write SetThenExpression;
+  end; { TGpSQLCaseWhenThen }
+
+  TGpSQLCaseWhenList = class(TInterfacedObject, IGpSQLCaseWhenList)
+  strict private
+    FWhenThenList: TList<IGpSQLCaseWhenThen>;
+  strict protected
+    function  GetWhenThen(idx: integer): IGpSQLCaseWhenThen;
+    procedure SetWhenThen(idx: integer; const value: IGpSQLCaseWhenThen);
+  public
+    constructor Create;
+    destructor  Destroy; override;
+    function  Add: IGpSQLCaseWhenThen; overload;
+    function  Add(const whenThen: IGpSQLCaseWhenThen): integer; overload;
+    function  Count: integer;
+    property WhenThen[idx: integer]: IGpSQLCaseWhenThen read GetWhenThen write SetWhenThen; default;
+  end; { TGpSQLCaseWhenList }
+
+  TGpSQLCase = class(TInterfacedObject, IGpSQLCase)
+  strict private
+    FCaseExpression: IGpSQLExpression;
+    FElseExpression: IGpSQLExpression;
+    FWhenList      : IGpSQLCaseWhenList;
+  strict protected
+    function  GetCaseExpression: IGpSQLExpression;
+    function  GetElseExpression: IGpSQLExpression;
+    function  GetWhenList: IGpSQLCaseWhenList;
+    procedure SetCaseExpression(const value: IGpSQLExpression);
+    procedure SetElseExpression(const value: IGpSQLExpression);
+    procedure SetWhenList(const value: IGpSQLCaseWhenList);
+  public
+    constructor Create;
+    property CaseExpression: IGpSQLExpression read GetCaseExpression write SetCaseExpression;
+    property WhenList: IGpSQLCaseWhenList read GetWhenList write SetWhenList;
+    property ElseExpression: IGpSQLExpression read GetElseExpression write SetElseExpression;
+  end; { TGpSQLCase }
 
   TGpSQLSection = class(TInterfacedObject, IGpSQLSection)
   strict private
@@ -485,6 +568,11 @@ begin
   Result := TGpSQLExpression.Create;
 end; { CreateSQLExpression }
 
+function CreateSQLCase: IGpSQLCase;
+begin
+  Result := TGpSQLCase.Create;
+end; { CreateSQLCase }
+
 { TGpSQLName }
 
 procedure TGpSQLName.Clear;
@@ -625,6 +713,115 @@ procedure TGpSQLExpression.SetTerm(const value: string);
 begin
   FTerm := value;
 end; { TGpSQLExpression.SetTerm }
+
+{ TGpSQLCaseWhenThen }
+
+constructor TGpSQLCaseWhenThen.Create;
+begin
+  inherited Create;
+  FWhenExpression := TGpSQLExpression.Create;
+  FThenExpression := TGpSQLExpression.Create;
+end; { TGpSQLCaseWhenThen.Create }
+
+function TGpSQLCaseWhenThen.GetThenExpression: IGpSQLExpression;
+begin
+  Result := FThenExpression;
+end; { TGpSQLCaseWhenThen.GetThenExpression }
+
+function TGpSQLCaseWhenThen.GetWhenExpression: IGpSQLExpression;
+begin
+  Result := FWhenExpression;
+end; { TGpSQLCaseWhenThen.GetWhenExpression }
+
+procedure TGpSQLCaseWhenThen.SetThenExpression(const value: IGpSQLExpression);
+begin
+  FThenExpression := value;
+end; { TGpSQLCaseWhenThen.SetThenExpression }
+
+procedure TGpSQLCaseWhenThen.SetWhenExpression(const value: IGpSQLExpression);
+begin
+  FWhenExpression := value;
+end; { TGpSQLCaseWhenThen.SetWhenExpression }
+
+{ TGpSQLCaseWhenList }
+
+constructor TGpSQLCaseWhenList.Create;
+begin
+  inherited Create;
+  FWhenThenList := TList<IGpSQLCaseWhenThen>.Create;
+end; { TGpSQLCaseWhenList.Create }
+
+destructor TGpSQLCaseWhenList.Destroy;
+begin
+  FreeAndNil(FWhenThenList);
+  inherited Destroy;
+end; { TGpSQLCaseWhenList.Destroy }
+
+function TGpSQLCaseWhenList.Add: IGpSQLCaseWhenThen;
+begin
+  Result := TGpSQLCaseWhenThen.Create;
+  Add(Result);
+end; { TGpSQLCaseWhenList.Add }
+
+function TGpSQLCaseWhenList.Add(const whenThen: IGpSQLCaseWhenThen): integer;
+begin
+  Result := FWhenThenList.Add(whenThen);
+end; { TGpSQLCaseWhenList.Add }
+
+function TGpSQLCaseWhenList.Count: integer;
+begin
+  Result := FWhenThenList.Count;
+end; { TGpSQLCaseWhenList.Count }
+
+function TGpSQLCaseWhenList.GetWhenThen(idx: integer): IGpSQLCaseWhenThen;
+begin
+  Result := FWhenThenList[idx];
+end; { TGpSQLCaseWhenList.GetWhenThen }
+
+procedure TGpSQLCaseWhenList.SetWhenThen(idx: integer; const value: IGpSQLCaseWhenThen);
+begin
+  FWhenThenList[idx] := value;
+end; { TGpSQLCaseWhenList.SetWhenThen }
+
+{ TGpSQLCase }
+
+constructor TGpSQLCase.Create;
+begin
+  inherited Create;
+  FCaseExpression := TGpSQLExpression.Create;
+  FElseExpression := TGpSQLExpression.Create;
+  FWhenList := TGpSQLCaseWhenList.Create;
+end; { TGpSQLCase.Create }
+
+function TGpSQLCase.GetCaseExpression: IGpSQLExpression;
+begin
+  Result := FCaseExpression;
+end; { TGpSQLCase.GetCaseExpression }
+
+function TGpSQLCase.GetElseExpression: IGpSQLExpression;
+begin
+  Result := FElseExpression;
+end; { TGpSQLCase.GetElseExpression }
+
+function TGpSQLCase.GetWhenList: IGpSQLCaseWhenList;
+begin
+  Result := FWhenList;
+end; { TGpSQLCase.GetWhenList }
+
+procedure TGpSQLCase.SetCaseExpression(const value: IGpSQLExpression);
+begin
+  FCaseExpression := value;
+end; { TGpSQLCase.SetCaseExpression }
+
+procedure TGpSQLCase.SetElseExpression(const value: IGpSQLExpression);
+begin
+  FElseExpression := value;
+end; { TGpSQLCase.SetElseExpression }
+
+procedure TGpSQLCase.SetWhenList(const value: IGpSQLCaseWhenList);
+begin
+  FWhenList := value;
+end; { TGpSQLCase.SetWhenList }
 
 { TGpSQLSection }
 

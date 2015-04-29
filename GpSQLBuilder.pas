@@ -211,16 +211,12 @@ type
 
   TGpSQLBuilderCase = class(TInterfacedObject, IGpSQLBuilderCase)
   strict private
-    FActiveSection : IGpSQLSection;
-    FCaseExpression: string;
-    FElseValue     : string;
-    FHasElse       : boolean;
-    FWhenList      : TList<TPair<IGpSQLSection,string>>;
+    FCase    : IGpSQLCase;
+    FLastExpr: IGpSQLBuilderExpression;
   strict protected
     function  GetAsString: string;
   public
     constructor Create(const expression: string);
-    destructor  Destroy; override;
     function  &And(const expression: array of const): IGpSQLBuilderCase; overload;
     function  &And(const expression: string): IGpSQLBuilderCase; overload;
     function  &And(const expression: IGpSQLBuilderExpression): IGpSQLBuilderCase; overload;
@@ -307,39 +303,34 @@ end; { CreateGpSQLBuilder }
 constructor TGpSQLBuilderCase.Create(const expression: string);
 begin
   inherited Create;
-  FCaseExpression := expression;
-  FWhenList := TList<TPair<IGpSQLSection,string>>.Create;
+  FCase := CreateSQLCase;
+  if expression <> '' then
+    FCase.CaseExpression.Term := expression;
 end; { TGpSQLBuilderCase.Create }
-
-destructor TGpSQLBuilderCase.Destroy;
-begin
-  FreeAndNil(FWhenList);
-  inherited;
-end; { TGpSQLBuilderCase.Destroy }
 
 function TGpSQLBuilderCase.&And(const expression: array of const): IGpSQLBuilderCase;
 begin
-  Result := &And(SqlParamsToStr(expression));
+  FLastExpr.&And(expression);
+  Result := Self;
 end; { TGpSQLBuilder.&And }
 
 function TGpSQLBuilderCase.&And(const expression: string): IGpSQLBuilderCase;
 begin
-  // TODO -oPrimoz Gabrijelcic : implement: TGpSQLBuilderCase
-//  FActiveSection.Add(['(', expression, ')'], stAnd);
+  FLastExpr.&And(expression);
   Result := Self;
 end; { TGpSQLBuilder.&And }
 
 function TGpSQLBuilderCase.&And(const expression: IGpSQLBuilderExpression):
   IGpSQLBuilderCase;
 begin
-// TODO 1 -oPrimoz Gabrijelcic : implement: TGpSQLBuilderCase
-//  Result := &And(expression.AsString);
+  FLastExpr.&And(expression.Expression);
+  Result := Self;
 end; { TGpSQLBuilderCase.&And }
 
 function TGpSQLBuilderCase.&Else(const value: string): IGpSQLBuilderCase;
 begin
-  FElseValue := value;
-  FHasElse := true;
+  FLastExpr := TGpSQLBuilderExpression.Create(value);
+  FCase.ElseExpression := FLastExpr.Expression;
   Result := Self;
 end; { TGpSQLBuilderCase.&Else }
 
@@ -350,51 +341,38 @@ end; { TGpSQLBuilderCase.&Else }
 
 function TGpSQLBuilderCase.&End: IGpSQLBuilderCase;
 begin
-  // TODO -oPrimoz Gabrijelcic : implement: TGpSQLBuilderCase
-//  (FSQLBuilder as IGpSQLBuilderEx).ActiveSection.Add(AsString, stList);
   Result := Self;
 end; { TGpSQLBuilderCase.&End }
 
 function TGpSQLBuilderCase.GetAsString: string;
-//var
-//  kv: TPair<IGpSQLSection,string>;
 begin
-  // TODO -oPrimoz Gabrijelcic : Remove
-//  Result := 'CASE ';
-//  if FCaseExpression <> '' then
-//    Result := Result + FCaseExpression + ' ';
-//  for kv in FWhenList do
-//    Result := Result + 'WHEN ' + kv.Key.AsString + ' THEN ' + kv.Value + ' ';
-//  if FHasElse then
-//    Result := Result + 'ELSE ' + FElseValue + ' ';
-//  Result := Result + 'END';
+  Result := CreateSQLSerializer(FCase).AsString;
 end; { TGpSQLBuilderCase.GetAsString }
 
 function TGpSQLBuilderCase.&Or(const expression: array of const): IGpSQLBuilderCase;
 begin
-  Result := &Or(SqlParamsToStr(expression));
+  FLastExpr.&Or(expression);
+  Result := Self;
 end; {  TGpSQLBuilder.&Or}
 
 function TGpSQLBuilderCase.&Or(const expression: string): IGpSQLBuilderCase;
 begin
-  // TODO -oPrimoz Gabrijelcic : implement: TGpSQLBuilderCase
-//  FActiveSection.Add(['(', expression, ')'], stOr);
+  FLastExpr.&Or(expression);
   Result := Self;
 end; { TGpSQLBuilder.&Or }
 
 function TGpSQLBuilderCase.&Or(const expression: IGpSQLBuilderExpression):
   IGpSQLBuilderCase;
 begin
-// TODO 1 -oPrimoz Gabrijelcic : implement: TGpSQLBuilderCase
-//  Result := &Or(expression.AsString);
+  FLastExpr.&Or(expression.Expression);
+  Result := Self;
 end; { TGpSQLBuilderCase.&Or }
 
 function TGpSQLBuilderCase.&Then(const value: string): IGpSQLBuilderCase;
 begin
-  FWhenList[FWhenList.Count - 1] :=
-    TPair<IGpSQLSection,string>.Create(
-      FWhenList[FWhenList.Count - 1].Key,
-      value);
+  // TODO 1 -oPrimoz Gabrijelcic : Check that WhenList.Count > 0
+  FLastExpr := TGpSQLBuilderExpression.Create(value);
+  FCase.WhenList[FCase.WhenList.Count-1].ThenExpression := FLastExpr.Expression;
   Result := Self;
 end; { TGpSQLBuilderCase.&Then }
 
@@ -414,14 +392,14 @@ begin
 end; { TGpSQLBuilderCase.When }
 
 function TGpSQLBuilderCase.When(const condition: string): IGpSQLBuilderCase;
+var
+  expr: IGpSQLExpression;
+  wt  : IGpSQLCaseWhenThen;
 begin
-  // TODO -oPrimoz Gabrijelcic : implement: TGpSQLBuilderCase.When
-//  FActiveSection := CreateSQLSection(secSelect); // TODO -oPrimoz Gabrijelcic : stopgap solution
-//  FWhenList.Add(TPair<IGpSQLSection,string>.Create(FActiveSection, ''));
-//  if condition = '' then
-//    Result := Self
-//  else
-//    Result := &And(condition);
+  FLastExpr := TGpSQLBuilderExpression.Create(condition);
+  wt := FCase.WhenList.Add;
+  wt.WhenExpression := FLastExpr.Expression;
+  Result := Self;
 end; { TGpSQLBuilderCase.When }
 
 { TGpSQLBuilderExpression }

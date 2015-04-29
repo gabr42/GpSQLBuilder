@@ -531,45 +531,43 @@ end;
 
 procedure TTestGpSQLBuilderCase.TestCase;
 const
-  CExpected = 'CASE WHEN (Column2 < 0) THEN 0 WHEN (Column2 > 100) THEN 2 ELSE 1 END';
+  CExpected = 'CASE WHEN Column2 < 0 THEN 0 WHEN Column2 > 100 THEN 2 ELSE 1 END';
 var
   SQLCase: IGpSQLBuilderCase;
 begin
-//  SQLCase := CreateGpSQLBuilder.&Case
-//    .When([COL_2, '< 0']).&Then('0')
-//    .When([COL_2, '> 100']).&Then('2')
-//    .&Else('1')
-//    .&End;
+  SQLCase := CreateGpSQLBuilder.&Case
+    .When([COL_2, '< 0']).&Then('0')
+    .When([COL_2, '> 100']).&Then('2')
+    .&Else('1')
+    .&End;
   Assert.AreEqual(CExpected, SQLCase.AsString);
 end;
 
 procedure TTestGpSQLBuilderCase.TestCase2;
 const
-  CExpected = 'CASE WHEN (Column2 < 0) THEN 0 WHEN (Column2 > 100) THEN 2 ELSE 1 END';
+  CExpected = 'CASE WHEN Column2 < 0 THEN 0 WHEN Column2 > 100 THEN 2 ELSE 1 END';
 var
   SQLCase: IGpSQLBuilderCase;
 begin
-// TODO -oPrimoz Gabrijelcic : implement: TTestGpSQLBuilderCase.TestCase2
-//  SQLCase := CreateGpSQLBuilder.&Case
-//    .When([COL_2, '< 0']).&Then(0)
-//    .When([COL_2, '> 100']).&Then(2)
-//    .&Else(1)
-//    .&End;
-//  Assert.AreEqual(CExpected, SQLCase.AsString);
+  SQLCase := CreateGpSQLBuilder.&Case
+    .When([COL_2, '< 0']).&Then(0)
+    .When([COL_2, '> 100']).&Then(2)
+    .&Else(1)
+    .&End;
+  Assert.AreEqual(CExpected, SQLCase.AsString);
 end;
 
 procedure TTestGpSQLBuilderCase.TestCase3;
 const
-  CExpected = 'CASE Column2 WHEN (0) THEN ''A'' WHEN (1) THEN ''B'' END';
+  CExpected = 'CASE Column2 WHEN 0 THEN ''A'' WHEN 1 THEN ''B'' END';
 var
   SQLCase: IGpSQLBuilderCase;
 begin
-// TODO -oPrimoz Gabrijelcic : implement: TTestGpSQLBuilderCase.TestCase3
-//  SQLCase := CreateGpSQLBuilder.&Case(COL_2)
-//    .When([0]).&Then('''A''')
-//    .When([1]).&Then('''B''')
-//    .&End;
-//  Assert.AreEqual(CExpected, SQLCase.AsString);
+  SQLCase := CreateGpSQLBuilder.&Case(COL_2)
+    .When([0]).&Then('''A''')
+    .When([1]).&Then('''B''')
+    .&End;
+  Assert.AreEqual(CExpected, SQLCase.AsString);
 end;
 
 procedure TTestGpSQLBuilderCase.TestCaseAndOr;
@@ -579,17 +577,16 @@ const
 var
   SQLCase: IGpSQLBuilderCase;
 begin
-// TODO -oPrimoz Gabrijelcic : implement: TTestGpSQLBuilderCase.TestCaseAndOr
-//  SQLCase := CreateGpSQLBuilder.&Case
-//    .When([COL_2, '< 0'])
-//      .&And([COL_1, 'IS NOT NULL'])
-//      .&Then(0)
-//    .When([COL_2, '> 100'])
-//      .&Or([COL_1, 'IS NULL'])
-//      .&Then(2)
-//    .&Else(1)
-//    .&End;
-//  Assert.AreEqual(CExpected, SQLCase.AsString);
+  SQLCase := CreateGpSQLBuilder.&Case
+    .When([COL_2, '< 0'])
+      .&And([COL_1, 'IS NOT NULL'])
+      .&Then(0)
+    .When([COL_2, '> 100'])
+      .&Or([COL_1, 'IS NULL'])
+      .&Then(2)
+    .&Else(1)
+    .&End;
+  Assert.AreEqual(CExpected, SQLCase.AsString);
 end;
 
 { TTestGpSQLBuilderExpression }

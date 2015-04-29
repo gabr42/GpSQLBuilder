@@ -51,12 +51,17 @@ type
     function AsString: string;
   end; { IGpSQLExpressionSerializer }
 
+  IGpSQLCaseSerializer = interface ['{1A56402D-2BFA-4282-B8EC-5FF80FB42994}']
+    function AsString: string;
+  end; { IGpSQLCaseSerializer }
+
   IGpSQLASTSerializer = interface ['{E6355E23-1D91-4536-A693-E1E33B0E2707}']
     function AsString: string;
   end; { IGpSQLASTSerializer }
 
-function CreateSQLSerializer(const ast: IGpSQLAST): IGpSQLASTSerializer; overload;
 function CreateSQLSerializer(const expr: IGpSQLExpression): IGpSQLExpressionSerializer; overload;
+function CreateSQLSerializer(const caseExpr: IGpSQLCase): IGpSQLCaseSerializer; overload;
+function CreateSQLSerializer(const ast: IGpSQLAST): IGpSQLASTSerializer; overload;
 
 // TODO -oPrimoz Gabrijelcic : temporary solution
 function SqlParamsToStr(const params: array of const): string;
@@ -74,8 +79,18 @@ type
     function  SerializeExpression(const expression: IGpSQLExpression; addParens: boolean = false): string;
   public
     constructor Create(const AExpr: IGpSQLExpression);
-    function AsString: string;
+    function  AsString: string;
   end; { TGpSQLExpressionSerializer }
+
+  TGpSQLCaseSerializer = class(TInterfacedObject, IGpSQLCaseSerializer)
+  strict private
+    FCase: IGpSQLCase;
+  strict protected
+    function SerializeExpression(const expression: IGpSQLExpression): string;
+  public
+    constructor Create(const ACase: IGpSQLCase);
+    function  AsString: string;
+  end; { TGpSQLCaseSerializer }
 
   TGpSQLSerializer = class(TInterfacedObject, IGpSQLASTSerializer)
   strict private
@@ -95,7 +110,7 @@ type
     function  SerializeWhere: string;
   public
     constructor Create(const AAST: IGpSQLAST);
-    function AsString: string;
+    function  AsString: string;
   end; { TGpSQLSerializer }
 
 { globals }
@@ -169,14 +184,19 @@ begin
   end;
 end; { SqlParamsToStr }
 
-function CreateSQLSerializer(const ast: IGpSQLAST): IGpSQLASTSerializer;
-begin
-  Result := TGpSQLSerializer.Create(ast);
-end; { CreateSQLSerializer }
-
 function CreateSQLSerializer(const expr: IGpSQLExpression): IGpSQLExpressionSerializer;
 begin
   Result := TGpSQLExpressionSerializer.Create(expr);
+end; { CreateSQLSerializer }
+
+function CreateSQLSerializer(const caseExpr: IGpSQLCase): IGpSQLCaseSerializer;
+begin
+  Result := TGpSQLCaseSerializer.Create(caseExpr);
+end; { CreateSQLSerializer }
+
+function CreateSQLSerializer(const ast: IGpSQLAST): IGpSQLASTSerializer;
+begin
+  Result := TGpSQLSerializer.Create(ast);
 end; { CreateSQLSerializer }
 
 { TGpSQLExpressionSerializer }
@@ -216,6 +236,40 @@ begin
       else raise Exception.Create('TGpSQLSerializer.SerializeExpression: Unknown operation');
     end;
 end; { TGpSQLExpressionSerializer.SerializeExpression }
+
+{ TGpSQLCaseSerializer }
+
+constructor TGpSQLCaseSerializer.Create(const ACase: IGpSQLCase);
+begin
+  inherited Create;
+  FCase := ACase;
+end; { TGpSQLCaseSerializer.Create }
+
+function TGpSQLCaseSerializer.AsString: string;
+var
+  i : integer;
+  wt: IGpSQLCaseWhenThen;
+begin
+  Result := 'CASE';
+  if not FCase.CaseExpression.IsEmpty then
+    Result := Concatenate([Result, SerializeExpression(FCase.CaseExpression)]);
+  for i := 0 to FCase.WhenList.Count - 1 do begin
+    Result := Concatenate([Result, 'WHEN']);
+    wt := FCase.WhenList[i];
+    if not wt.WhenExpression.IsEmpty then
+      Result := Concatenate([Result, SerializeExpression(wt.WhenExpression)]);
+    Result := Concatenate([Result, 'THEN', SerializeExpression(wt.ThenExpression)]);
+  end;
+  if not FCase.ElseExpression.IsEmpty then
+    Result := Concatenate([Result, 'ELSE', SerializeExpression(FCase.ElseExpression)]);
+  Result := Concatenate([Result, 'END']);
+end; { TGpSQLCaseSerializer.AsString }
+
+function TGpSQLCaseSerializer.SerializeExpression(const expression: IGpSQLExpression):
+  string;
+begin
+  Result := CreateSQLSerializer(expression).AsString;
+end; { TGpSQLCaseSerializer.SerializeExpression }
 
 { TGpSQLSerializer }
 
@@ -259,13 +313,8 @@ begin
 end; { TGpSQLSerializer.SerializeDirection }
 
 function TGpSQLSerializer.SerializeExpression(const expression: IGpSQLExpression): string;
-var
-  serializer: TGpSQLExpressionSerializer;
 begin
-  serializer := TGpSQLExpressionSerializer.Create(expression);
-  try
-    Result := serializer.AsString;
-  finally FreeAndNil(serializer); end;
+  Result := CreateSQLSerializer(expression).AsString;
 end; { TGpSQLSerializer.SerializeExpression }
 
 function TGpSQLSerializer.SerializeGroupBy: string;
