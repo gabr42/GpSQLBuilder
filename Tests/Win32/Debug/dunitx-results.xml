@@ -1,12 +1,12 @@
 ﻿<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
-<test-results name="H:\razvoj\GpSQLBuilder\Tests\Win32\Debug\TestGpSQLBuilder.exe" total="50" errors="0" failures="0" ignored="0" inconclusive="0" not-run="0" skipped="0" invalid="0" date="2015-04-29" time="0.024">
+<test-results name="H:\RAZVOJ\GpSQLBuilder\Tests\Win32\Debug\TestGpSQLBuilder.exe" total="51" errors="0" failures="0" ignored="0" inconclusive="0" not-run="0" skipped="0" invalid="0" date="2015-04-30" time="0.014">
   <environment nunit-version="DUnitX" clr-version="2.0.0.0" os-version="6.1.0.0" platform="Windows" cwd="c:\test" machine-name="mymachine" user="vincent" user-domain="finalbuilder.com"  />
   <culture-info current-culture="en" current-uiculture="en" />
-  <test-suite type="Assembly" name="TestGpSQLBuilder.exe" executed="true" result="Success" success="True" time="0.024" asserts="0">
+  <test-suite type="Assembly" name="TestGpSQLBuilder.exe" executed="true" result="Success" success="True" time="0.014" asserts="0">
     <results>
-        <test-suite type="Namespace" name="TestGpSQLBuilder1" executed="true" result="Success" success="True" time="0.019" asserts="0" >
+        <test-suite type="Namespace" name="TestGpSQLBuilder1" executed="true" result="Success" success="True" time="0.011" asserts="0" >
           <results>
-              <test-suite type="Fixture" name="TTestGpSQLBuilder" executed="True" result="Success" success="True" time="0.019" >
+              <test-suite type="Fixture" name="TTestGpSQLBuilder" executed="True" result="Success" success="True" time="0.011" >
                 <results>
                   <test-case name="TestEmptyResult" executed="True" result="Success" success="True" time="0.000" asserts="0" />
                   <test-case name="TestSelectAll" executed="True" result="Success" success="True" time="0.000" asserts="0" />
@@ -19,6 +19,7 @@
                   <test-case name="TestColumnAlias" executed="True" result="Success" success="True" time="0.000" asserts="0" />
                   <test-case name="TestSelectFirst" executed="True" result="Success" success="True" time="0.000" asserts="0" />
                   <test-case name="TestSelectFirstSkip" executed="True" result="Success" success="True" time="0.000" asserts="0" />
+                  <test-case name="TestSelectDistinct" executed="True" result="Success" success="True" time="0.000" asserts="0" />
                   <test-case name="TestSelectWhere" executed="True" result="Success" success="True" time="0.000" asserts="0" />
                   <test-case name="TestLeftJoin" executed="True" result="Success" success="True" time="0.000" asserts="0" />
                   <test-case name="TestLeftJoin2" executed="True" result="Success" success="True" time="0.000" asserts="0" />
@@ -32,14 +33,14 @@
                   <test-case name="TestGroupByHaving" executed="True" result="Success" success="True" time="0.000" asserts="0" />
                   <test-case name="TestOrderBy" executed="True" result="Success" success="True" time="0.000" asserts="0" />
                   <test-case name="TestOrderBy2" executed="True" result="Success" success="True" time="0.000" asserts="0" />
-                  <test-case name="TestOrderByTwoColumns" executed="True" result="Success" success="True" time="0.000" asserts="0" />
+                  <test-case name="TestOrderByTwoColumns" executed="True" result="Success" success="True" time="0.001" asserts="0" />
                   <test-case name="TestOrderByDesc" executed="True" result="Success" success="True" time="0.000" asserts="0" />
                   <test-case name="TestOrderByTwoColumnsDesc1" executed="True" result="Success" success="True" time="0.000" asserts="0" />
                   <test-case name="TestOrderByTwoColumnsDesc2" executed="True" result="Success" success="True" time="0.000" asserts="0" />
                   <test-case name="TestWhereAnd" executed="True" result="Success" success="True" time="0.000" asserts="0" />
                   <test-case name="TestWhereAnd2" executed="True" result="Success" success="True" time="0.000" asserts="0" />
                   <test-case name="TestWhereOr" executed="True" result="Success" success="True" time="0.000" asserts="0" />
-                  <test-case name="TestWhereAndOr" executed="True" result="Success" success="True" time="0.001" asserts="0" />
+                  <test-case name="TestWhereAndOr" executed="True" result="Success" success="True" time="0.000" asserts="0" />
                   <test-case name="TestSelectCaseIntegration" executed="True" result="Success" success="True" time="0.000" asserts="0" />
                   <test-case name="TestSelectCaseAliasIntegration" executed="True" result="Success" success="True" time="0.000" asserts="0" />
                   <test-case name="TestOrderByCaseIntegration" executed="True" result="Success" success="True" time="0.000" asserts="0" />
@@ -54,7 +55,7 @@
               </test-suite>
           </results>
         </test-suite>
-        <test-suite type="Fixture" name="TTestGpSQLBuilderCase" executed="True" result="Success" success="True" time="0.002" >
+        <test-suite type="Fixture" name="TTestGpSQLBuilderCase" executed="True" result="Success" success="True" time="0.001" >
           <results>
             <test-case name="TestCase" executed="True" result="Success" success="True" time="0.000" asserts="0" />
             <test-case name="TestCase2" executed="True" result="Success" success="True" time="0.000" asserts="0" />
@@ -62,7 +63,7 @@
             <test-case name="TestCaseAndOr" executed="True" result="Success" success="True" time="0.000" asserts="0" />
           </results>
         </test-suite>
-        <test-suite type="Fixture" name="TTestGpSQLBuilderExpression" executed="True" result="Success" success="True" time="0.002" >
+        <test-suite type="Fixture" name="TTestGpSQLBuilderExpression" executed="True" result="Success" success="True" time="0.001" >
           <results>
             <test-case name="TestAnd" executed="True" result="Success" success="True" time="0.000" asserts="0" />
             <test-case name="TestAnd2" executed="True" result="Success" success="True" time="0.000" asserts="0" />

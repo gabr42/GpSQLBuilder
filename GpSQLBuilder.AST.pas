@@ -31,9 +31,11 @@
 ///
 ///   Author            : Primoz Gabrijelcic
 ///   Creation date     : 2015-04-20
-///   Last modification : 2015-04-29
-///   Version           : 1.0
+///   Last modification : 2015-04-30
+///   Version           : 1.01
 ///   History:
+///     1.01: 2015-04-30
+///       - Added sqDistinct TGpSQLSelectQualifierType, representing SELECT DISTINCT.
 ///     1.0: 2015-04-29
 ///       - Released.
 ///</para></remarks>
@@ -138,7 +140,7 @@ type
     property Name: string read GetName;
   end; { IGpSQLSection }
 
-  TGpSQLSelectQualifierType = (sqFirst, sqSkip);
+  TGpSQLSelectQualifierType = (sqFirst, sqSkip, sqDistinct);
 
   IGpSQLSelectQualifier = interface ['{EC0EC192-81C6-493B-B4A7-F8DA7F6D0D4B}']
     function  GetQualifier: TGpSQLSelectQualifierType;

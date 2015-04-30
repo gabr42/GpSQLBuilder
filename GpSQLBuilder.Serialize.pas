@@ -31,10 +31,12 @@
 ///
 ///   Author            : Primoz Gabrijelcic
 ///   Creation date     : 2015-04-20
-///   Last modification : 2015-04-29
-///   Version           : 1.0
+///   Last modification : 2015-04-30
+///   Version           : 1.01
 ///</para><para>
 ///   History:
+///     1.01: 2015-04-30
+///       - Knows how to serialize sqDistinct select qualifier.
 ///     1.0: 2015-04-29
 ///       - Released.
 ///</para></remarks>
@@ -348,8 +350,9 @@ begin
   Result := '';
   for i := 0 to qualifiers.Count - 1 do
     case qualifiers[i].Qualifier of
-      sqFirst: Result := AddToList(Result, ' ', Concatenate(['FIRST', IntToStr(qualifiers[i].Value)]));
-      sqSkip:  Result := AddToList(Result, ' ', Concatenate(['SKIP', IntToStr(qualifiers[i].Value)]));
+      sqFirst:    Result := Concatenate([Result, 'FIRST', IntToStr(qualifiers[i].Value)]);
+      sqSkip:     Result := Concatenate([Result, 'SKIP', IntToStr(qualifiers[i].Value)]);
+      sqDistinct: Result := Concatenate([Result, 'DISTINCT']);
       else raise Exception.Create('TGpSQLSerializer.SerializeSelectQualifiers: Unknown qualifier');
     end;
 end; { TGpSQLSerializer.SerializeSelectQualifiers }

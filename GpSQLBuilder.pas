@@ -31,10 +31,12 @@
 ///
 ///   Author            : Primoz Gabrijelcic
 ///   Creation date     : 2010-11-24
-///   Last modification : 2015-04-29
-///   Version           : 3.0
+///   Last modification : 2015-04-30
+///   Version           : 3.01
 ///</para><para>
 ///   History:
+///     3.01: 2015-04-30
+///       - Added .Distinct method.
 ///     3.0: 2015-04-29
 ///       - Internal redesign: SQL is generated as an abstract syntax tree and only
 ///         converted to text when AsString is called. This allows implementing the
@@ -156,6 +158,7 @@ type
     function Column(const colName: array of const): IGpSQLBuilder; overload;
     function Column(const caseExpr: IGpSQLBuilderCase): IGpSQLBuilder; overload;
     function Desc: IGpSQLBuilder;
+    function Distinct: IGpSQLBuilder;
     function Expression(const term: string = ''): IGpSQLBuilderExpression; overload;
     function Expression(const term: array of const): IGpSQLBuilderExpression; overload;
     function First(num: integer): IGpSQLBuilder;
@@ -275,6 +278,7 @@ type
     function  Column(const colName: array of const): IGpSQLBuilder; overload;
     function  Column(const caseExpr: IGpSQLBuilderCase): IGpSQLBuilder; overload;
     function  Desc: IGpSQLBuilder;
+    function  Distinct: IGpSQLBuilder;
     function  Expression(const term: string = ''): IGpSQLBuilderExpression; overload;
     function  Expression(const term: array of const): IGpSQLBuilderExpression; overload;
     function  First(num: integer): IGpSQLBuilder;
@@ -828,6 +832,16 @@ begin
   FActiveExpr := TGpSQLBuilderExpression.Create(join.Condition);
   Result := Self;
 end; { TGpSQLBuilder.CreateJoin }
+
+function TGpSQLBuilder.Distinct: IGpSQLBuilder;
+var
+  qual: IGpSQLSelectQualifier;
+begin
+  AssertSection([secSelect]);
+  qual := (FASTSection as IGpSQLSelect).Qualifiers.Add;
+  qual.Qualifier := sqDistinct;
+  Result := Self;
+end; { TGpSQLBuilder.Distinct }
 
 function TGpSQLBuilder.GetAST: IGpSQLAST;
 begin

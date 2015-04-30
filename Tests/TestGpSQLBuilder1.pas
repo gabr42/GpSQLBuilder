@@ -27,6 +27,7 @@ type
     [Test] procedure TestColumnAlias;
     [Test] procedure TestSelectFirst;
     [Test] procedure TestSelectFirstSkip;
+    [Test] procedure TestSelectDistinct;
     [Test] procedure TestSelectWhere;
     [Test] procedure TestLeftJoin;
     [Test] procedure TestLeftJoin2;
@@ -506,6 +507,18 @@ begin
     .Select
       .First(10)
       .Skip(5)
+      .All
+    .From(DB_TEST);
+  Assert.AreEqual(CExpected, SQL.AsString);
+end;
+
+procedure TTestGpSQLBuilder.TestSelectDistinct;
+const
+  CExpected = 'SELECT DISTINCT * FROM Test';
+begin
+  SQL
+    .Select
+      .Distinct
       .All
     .From(DB_TEST);
   Assert.AreEqual(CExpected, SQL.AsString);
