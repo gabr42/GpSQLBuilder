@@ -31,10 +31,14 @@
 ///
 ///   Author            : Primoz Gabrijelcic
 ///   Creation date     : 2010-11-24
-///   Last modification : 2015-04-30
-///   Version           : 3.01
+///   Last modification : 2015-05-05
+///   Version           : 3.02
 ///</para><para>
 ///   History:
+///     3.02: 2015-05-05
+///       - IGpSQLColums was renamed to IGpSQLNames.
+///       - IGpSQLBuilder.From adds a new name on each call to accomodate multiple tables
+///         in the From part.
 ///     3.01: 2015-04-30
 ///       - Added .Distinct method.
 ///     3.0: 2015-04-29
@@ -252,7 +256,7 @@ type
     FActiveSection: TGpSQLSection;
     FActiveExpr   : IGpSQLBuilderExpression;
     FAST          : IGpSQLAST;
-    FASTColumns   : IGpSQLColumns;
+    FASTColumns   : IGpSQLNames;
     FASTSection   : IGpSQLSection;
     FASTName      : IGpSQLName;
   strict protected
@@ -717,7 +721,7 @@ end; { TGpSQLBuilder.First }
 function TGpSQLBuilder.From(const dbName: string): IGpSQLBuilder;
 begin
   AssertSection([secSelect]);
-  FASTName := (FASTSection as IGpSQLSelect).TableName;
+  FASTName := (FASTSection as IGpSQLSelect).TableNames.Add;
   FASTName.Name := dbName;
   Result := Self;
 end; { TGpSQLBuilder.From }

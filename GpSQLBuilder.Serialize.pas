@@ -31,10 +31,13 @@
 ///
 ///   Author            : Primoz Gabrijelcic
 ///   Creation date     : 2015-04-20
-///   Last modification : 2015-04-30
-///   Version           : 1.01
+///   Last modification : 2015-05-05
+///   Version           : 1.02
 ///</para><para>
 ///   History:
+///     1.02: 2015-05-05
+///       - Select.TableNames must be serialized as a list.
+///       - IGpSQLColums was renamed to IGpSQLNames.
 ///     1.01: 2015-04-30
 ///       - Knows how to serialize sqDistinct select qualifier.
 ///     1.0: 2015-04-29
@@ -97,7 +100,7 @@ type
     FAST : IGpSQLAST;
   strict protected
     function  SerializeCase(const caseExpr: IGpSQLCase): string;
-    function  SerializeColumns(const columns: IGpSQLColumns): string;
+    function SerializeNames(const columns: IGpSQLNames): string;
     function  SerializeDirection(direction: TGpSQLOrderByDirection): string;
     function  SerializeExpression(const expression: IGpSQLExpression): string;
     function  SerializeGroupBy: string;
@@ -247,19 +250,6 @@ begin
   Result := CreateSQLSerializer(caseExpr).AsString;
 end; { TGpSQLSerializer.SerializeCase }
 
-function TGpSQLSerializer.SerializeColumns(const columns: IGpSQLColumns): string;
-var
-  i         : integer;
-  orderByCol: IGpSQLOrderByColumn;
-begin
-  Result := '';
-  for i := 0 to columns.Count - 1 do begin
-    Result := Concatenate([Result, SerializeName(columns[i])], ', ');
-    if Supports(columns[i], IGpSQLOrderByColumn, orderByCol) then
-      Result := Concatenate([Result, SerializeDirection(orderByCol.Direction)]);
-  end;
-end; { TGpSQLSerializer.SerializeColumns }
-
 function TGpSQLSerializer.SerializeDirection(direction: TGpSQLOrderByDirection): string;
 begin
   case direction of
@@ -279,7 +269,7 @@ begin
   if FAST.GroupBy.IsEmpty then
     Result := ''
   else
-    Result := Concatenate(['GROUP BY', SerializeColumns(FAST.GroupBy.Columns)]);
+    Result := Concatenate(['GROUP BY', SerializeNames(FAST.GroupBy.Columns)]);
 end; { TGpSQLSerializer.SerializeGroupBy }
 
 function TGpSQLSerializer.SerializeHaving: string;
@@ -325,12 +315,25 @@ begin
     Result := Result + ' AS ' + name.Alias;
 end; { TGpSQLSerializer.SerializeName }
 
+function TGpSQLSerializer.SerializeNames(const columns: IGpSQLNames): string;
+var
+  i         : integer;
+  orderByCol: IGpSQLOrderByColumn;
+begin
+  Result := '';
+  for i := 0 to columns.Count - 1 do begin
+    Result := Concatenate([Result, SerializeName(columns[i])], ', ');
+    if Supports(columns[i], IGpSQLOrderByColumn, orderByCol) then
+      Result := Concatenate([Result, SerializeDirection(orderByCol.Direction)]);
+  end;
+end; { TGpSQLSerializer.SerializeNames }
+
 function TGpSQLSerializer.SerializeOrderBy: string;
 begin
   if FAST.OrderBy.IsEmpty then
     Result := ''
   else
-    Result := Concatenate(['ORDER BY', SerializeColumns(FAST.OrderBy.Columns)]);
+    Result := Concatenate(['ORDER BY', SerializeNames(FAST.OrderBy.Columns)]);
 end; { TGpSQLSerializer.SerializeOrderBy }
 
 function TGpSQLSerializer.SerializeSelect: string;
@@ -339,7 +342,7 @@ begin
     Result := ''
   else
     Result := Concatenate(['SELECT', SerializeSelectQualifiers(FAST.Select.Qualifiers),
-      SerializeColumns(FAST.Select.Columns), 'FROM', SerializeName(FAST.Select.TableName)]);
+      SerializeNames(FAST.Select.Columns), 'FROM', SerializeNames(FAST.Select.TableNames)]);
 end; { TGpSQLSerializer.SerializeSelect }
 
 function TGpSQLSerializer.SerializeSelectQualifiers(

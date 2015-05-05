@@ -23,6 +23,7 @@ type
     [Test] procedure TestSelectColumn2;
     [Test] procedure TestSelectTwoColumns;
     [Test] procedure TestSelectDBColumn;
+    [Test] procedure TestSelectTwoTables;
     [Test] procedure TestDBAlias;
     [Test] procedure TestColumnAlias;
     [Test] procedure TestSelectFirst;
@@ -484,6 +485,19 @@ begin
     .Select
       .Column(DB_TEST, COL_1)
     .From(DB_TEST);
+  Assert.AreEqual(CExpected, SQL.AsString);
+end;
+
+procedure TTestGpSQLBuilder.TestSelectTwoTables;
+const
+  CExpected = 'SELECT Test.Column1, Detail.DetailID FROM Test, Detail';
+begin
+  SQL
+    .Select
+      .Column(DB_TEST, COL_1)
+      .Column(DB_DETAIL, COL_DETAIL_ID)
+    .From(DB_TEST)
+    .From(DB_DETAIL);
   Assert.AreEqual(CExpected, SQL.AsString);
 end;
 

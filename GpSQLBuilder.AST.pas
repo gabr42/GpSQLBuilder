@@ -31,9 +31,13 @@
 ///
 ///   Author            : Primoz Gabrijelcic
 ///   Creation date     : 2015-04-20
-///   Last modification : 2015-04-30
-///   Version           : 1.01
+///   Last modification : 2015-05-05
+///   Version           : 1.02
 ///   History:
+///     1.02: 2015-05-05
+///       - IGpSQLColums was renamed to IGpSQLNames.
+///       - IGpSQLSelect.TableName: IGpSQLName was changed to .TableNames:IGpSQLNames to
+///         accomodate more than one table in the From part.
 ///     1.01: 2015-04-30
 ///       - Added sqDistinct TGpSQLSelectQualifierType, representing SELECT DISTINCT.
 ///     1.0: 2015-04-29
@@ -66,7 +70,7 @@ type
     property Alias: string read GetAlias write SetAlias;
   end; { IGpSQLName }
 
-  IGpSQLColumns = interface
+  IGpSQLNames = interface
   ['{DA9157F6-3526-4DA4-8CD3-115DFE7719B3}']
     function  GetColumns(idx: integer): IGpSQLName;
   //
@@ -76,7 +80,7 @@ type
     function  Count: integer;
     function  IsEmpty: boolean;
     property Columns[idx: integer]: IGpSQLName read GetColumns; default;
-  end; { IGpSQLColumns }
+  end; { IGpSQLNames }
 
   TGpSQLExpressionOperation = (opNone, opAnd, opOr);
 
@@ -164,14 +168,13 @@ type
   end; { IGpSQLSelectQualifiers }
 
   IGpSQLSelect = interface(IGpSQLSection) ['{6B23B86E-97F3-4D8A-BED5-A678EAEF7842}']
-    function  GetColumns: IGpSQLColumns;
+    function  GetColumns: IGpSQLNames;
     function  GetQualifiers: IGpSQLSelectQualifiers;
-    function  GetTableName: IGpSQLName;
-    procedure SetTableName(const value: IGpSQLName);
+    function  GetTableNames: IGpSQLNames;
   //
-    property Columns: IGpSQLColumns read GetColumns;
+    property Columns: IGpSQLNames read GetColumns;
     property Qualifiers: IGpSQLSelectQualifiers read GetQualifiers;
-    property TableName: IGpSQLName read GetTableName write SetTableName;
+    property TableNames: IGpSQLNames read GetTableNames;
   end; { IGpSQLSelect }
 
   TGpSQLJoinType = (jtInner, jtLeft, jtRight, jtFull);
@@ -209,9 +212,9 @@ type
   end; { IGpSQLWhere }
 
   IGpSQLGroupBy = interface(IGpSQLSection) ['{B8B50CF2-2E2A-4C3C-B9B6-D6B0BE92502C}']
-    function GetColumns: IGpSQLColumns;
+    function GetColumns: IGpSQLNames;
   //
-    property Columns: IGpSQLColumns read GetColumns;
+    property Columns: IGpSQLNames read GetColumns;
   end; { IGpSQLGroupBy }
 
   IGpSQLHaving = interface(IGpSQLSection) ['{BF1459A7-C665-4983-A724-A7002F6D201F}']
@@ -231,9 +234,9 @@ type
   end; { IGpSQLOrderByColumn }
 
   IGpSQLOrderBy = interface(IGpSQLSection) ['{6BC985B7-219A-4359-9F21-60A985969368}']
-    function GetColumns: IGpSQLColumns;
+    function GetColumns: IGpSQLNames;
   //
-    property Columns: IGpSQLColumns read GetColumns;
+    property Columns: IGpSQLNames read GetColumns;
   end; { IGpSQLOrderBy }
 
   IGpSQLAST = interface
@@ -284,7 +287,7 @@ type
     property Alias: string read GetAlias write SetAlias;
   end; { TGpSQLName }
 
-  TGpSQLColumns = class(TInterfacedObject, IGpSQLColumns)
+  TGpSQLNames = class(TInterfacedObject, IGpSQLNames)
   strict private
     FColumns: TList<IGpSQLName>;
   strict protected
@@ -298,7 +301,7 @@ type
     function  Count: integer;
     function  IsEmpty: boolean;
     property Columns[idx: integer]: IGpSQLName read GetColumns; default;
-  end; { TGpSQLColumns }
+  end; { TGpSQLNames }
 
   TGpSQLExpression = class(TInterfacedObject, IGpSQLExpression)
   strict private
@@ -418,21 +421,20 @@ type
 
   TGpSQLSelect = class(TGpSQLSection, IGpSQLSelect)
   strict private
-    FColumns   : IGpSQLColumns;
+    FColumns   : IGpSQLNames;
     FQualifiers: IGpSQLSelectQualifiers;
-    FTableName : IGpSQLName;
+    FTableNames: IGpSQLNames;
   strict protected
-    function  GetColumns: IGpSQLColumns;
+    function  GetColumns: IGpSQLNames;
     function  GetQualifiers: IGpSQLSelectQualifiers;
-    function  GetTableName: IGpSQLName;
-    procedure SetTableName(const value: IGpSQLName);
+    function  GetTableNames: IGpSQLNames;
   public
     constructor Create;
     procedure Clear; override;
     function  IsEmpty: boolean; override;
-    property Columns: IGpSQLColumns read GetColumns;
+    property Columns: IGpSQLNames read GetColumns;
     property Qualifiers: IGpSQLSelectQualifiers read GetQualifiers;
-    property TableName: IGpSQLName read GetTableName write SetTableName;
+    property TableNames: IGpSQLNames read GetTableNames;
   end; { IGpSQLSelect }
 
   TGpSQLJoin = class(TGpSQLSection, IGpSQLJoin)
@@ -488,14 +490,14 @@ type
 
   TGpSQLGroupBy = class(TGpSQLSection, IGpSQLGroupBy)
   strict private
-    FColumns: IGpSQLColumns;
+    FColumns: IGpSQLNames;
   strict protected
-    function  GetColumns: IGpSQLColumns;
+    function  GetColumns: IGpSQLNames;
   public
     constructor Create;
     procedure Clear; override;
     function  IsEmpty: boolean; override;
-    property Columns: IGpSQLColumns read GetColumns;
+    property Columns: IGpSQLNames read GetColumns;
   end; { IGpSQLGroupBy }
 
   TGpSQLHaving = class(TGpSQLSection, IGpSQLHaving)
@@ -521,21 +523,21 @@ type
     property Direction: TGpSQLOrderByDirection read GetDirection write SetDirection;
   end; { TGpSQLOrderByColumn }
 
-  TGpSQLOrderByColumns = class(TGpSQLColumns)
+  TGpSQLOrderByColumns = class(TGpSQLNames)
   public
     function Add: IGpSQLName; override;
   end; { TGpSQLOrderByColumns }
 
   TGpSQLOrderBy = class(TGpSQLSection, IGpSQLOrderBy)
   strict private
-    FColumns: IGpSQLColumns;
+    FColumns: IGpSQLNames;
   strict protected
-    function  GetColumns: IGpSQLColumns;
+    function  GetColumns: IGpSQLNames;
   public
     constructor Create;
     procedure Clear; override;
     function  IsEmpty: boolean; override;
-    property Columns: IGpSQLColumns read GetColumns;
+    property Columns: IGpSQLNames read GetColumns;
   end; { IGpSQLOrderBy }
 
   TGpSQLAST = class(TInterfacedObject, IGpSQLAST)
@@ -625,50 +627,50 @@ begin
   FName := value;
 end; { TGpSQLName.SetName }
 
-{ TGpSQLColumns }
+{ TGpSQLNames }
 
-constructor TGpSQLColumns.Create;
+constructor TGpSQLNames.Create;
 begin
   inherited Create;
   FColumns := TList<IGpSQLName>.Create;
-end; { TGpSQLColumns.Create }
+end; { TGpSQLNames.Create }
 
-destructor TGpSQLColumns.Destroy;
+destructor TGpSQLNames.Destroy;
 begin
   FreeAndNil(FColumns);
   inherited;
-end; { TGpSQLColumns.Destroy }
+end; { TGpSQLNames.Destroy }
 
-function TGpSQLColumns.Add: IGpSQLName;
+function TGpSQLNames.Add: IGpSQLName;
 begin
   Result := TGpSQLName.Create;
   Add(Result);
-end; { TGpSQLColumns.Add }
+end; { TGpSQLNames.Add }
 
-procedure TGpSQLColumns.Add(const name: IGpSQLName);
+procedure TGpSQLNames.Add(const name: IGpSQLName);
 begin
   FColumns.Add(name);
-end; { TGpSQLColumns.Add }
+end; { TGpSQLNames.Add }
 
-procedure TGpSQLColumns.Clear;
+procedure TGpSQLNames.Clear;
 begin
   FColumns.Clear;
-end; { TGpSQLColumns.Clear }
+end; { TGpSQLNames.Clear }
 
-function TGpSQLColumns.Count: integer;
+function TGpSQLNames.Count: integer;
 begin
   Result := FColumns.Count;
-end; { TGpSQLColumns.Count }
+end; { TGpSQLNames.Count }
 
-function TGpSQLColumns.GetColumns(idx: integer): IGpSQLName;
+function TGpSQLNames.GetColumns(idx: integer): IGpSQLName;
 begin
   Result := FColumns[idx];
-end; { TGpSQLColumns.GetColumns }
+end; { TGpSQLNames.GetColumns }
 
-function TGpSQLColumns.IsEmpty: boolean;
+function TGpSQLNames.IsEmpty: boolean;
 begin
   Result := (Count = 0);
-end; { TGpSQLColumns.IsEmpty }
+end; { TGpSQLNames.IsEmpty }
 
 { TGpSQLExpression }
 
@@ -927,18 +929,18 @@ end; { TGpSQLSelectQualifiers.IsEmpty }
 procedure TGpSQLSelect.Clear;
 begin
   Columns.Clear;
-  TableName.Clear;
+  TableNames.Clear;
 end; { TGpSQLSelect.Clear }
 
 constructor TGpSQLSelect.Create;
 begin
   inherited Create('Select');
-  FColumns := TGpSQLColumns.Create;
+  FColumns := TGpSQLNames.Create;
   FQualifiers := TGpSQLSelectQualifiers.Create;
-  FTableName := TGpSQLName.Create;
+  FTableNames := TGpSQLNames.Create;
 end; { TGpSQLSelect.Create }
 
-function TGpSQLSelect.GetColumns: IGpSQLColumns;
+function TGpSQLSelect.GetColumns: IGpSQLNames;
 begin
   Result := FColumns;
 end; { TGpSQLSelect.GetColumns }
@@ -948,20 +950,15 @@ begin
   Result := FQualifiers;
 end; { TGpSQLSelect.GetQualifiers }
 
-function TGpSQLSelect.GetTableName: IGpSQLName;
+function TGpSQLSelect.GetTableNames: IGpSQLNames;
 begin
-  Result := FTableName;
-end; { TGpSQLSelect.GetTableName }
+  Result := FTableNames;
+end; { TGpSQLSelect.GetTableNames }
 
 function TGpSQLSelect.IsEmpty: boolean;
 begin
-  Result := Columns.IsEmpty and TableName.IsEmpty;
+  Result := Columns.IsEmpty and TableNames.IsEmpty;
 end; { TGpSQLSelect.IsEmpty }
-
-procedure TGpSQLSelect.SetTableName(const value: IGpSQLName);
-begin
-  FTableName := value;
-end; { TGpSQLSelect.SetTableName }
 
 { TGpSQLJoin }
 
@@ -1101,10 +1098,10 @@ end; { TGpSQLGroupBy.Clear }
 constructor TGpSQLGroupBy.Create;
 begin
   inherited Create('GroupBy');
-  FColumns := TGpSQLColumns.Create;
+  FColumns := TGpSQLNames .Create;
 end; { TGpSQLGroupBy.Create }
 
-function TGpSQLGroupBy.GetColumns: IGpSQLColumns;
+function TGpSQLGroupBy.GetColumns: IGpSQLNames;
 begin
   Result := FColumns;
 end; { TGpSQLGroupBy.GetColumns }
@@ -1177,7 +1174,7 @@ begin
   Columns.Clear;
 end; { TGpSQLOrderBy.Clear }
 
-function TGpSQLOrderBy.GetColumns: IGpSQLColumns;
+function TGpSQLOrderBy.GetColumns: IGpSQLNames;
 begin
   Result := FColumns;
 end; { TGpSQLOrderBy.GetColumns }
