@@ -31,10 +31,12 @@
 ///
 ///   Author            : Primoz Gabrijelcic
 ///   Creation date     : 2010-11-24
-///   Last modification : 2015-05-05
-///   Version           : 3.02
+///   Last modification : 2015-06-17
+///   Version           : 3.03
 ///</para><para>
 ///   History:
+///     3.03: 2015-06-17
+///       - Added .Update, .&Set, and .Delete methods.
 ///     3.02: 2015-05-05
 ///       - IGpSQLColums was renamed to IGpSQLNames.
 ///       - IGpSQLBuilder.From adds a new name on each call to accomodate multiple tables
@@ -161,6 +163,7 @@ type
     function Column(const dbName, colName: string): IGpSQLBuilder; overload;
     function Column(const colName: array of const): IGpSQLBuilder; overload;
     function Column(const caseExpr: IGpSQLBuilderCase): IGpSQLBuilder; overload;
+    function Delete: IGpSQLBuilder;
     function Desc: IGpSQLBuilder;
     function Distinct: IGpSQLBuilder;
     function Expression(const term: string = ''): IGpSQLBuilderExpression; overload;
@@ -181,7 +184,10 @@ type
     function RightJoin(const dbName: string): IGpSQLBuilder;
     function Select(const colName: string = ''): IGpSQLBuilder; overload;
     function Select(const caseExpr: IGpSQLBuilderCase): IGpSQLBuilder; overload;
+    function &Set(const colName, colValue: string): IGpSQLBuilder; overload;
+    function &Set(const colName: string; const colValue: array of const): IGpSQLBuilder; overload;
     function Skip(num: integer): IGpSQLBuilder;
+    function Update(const tableName: string): IGpSQLBuilder;
     function Where(const expression: string = ''): IGpSQLBuilder; overload;
     function Where(const expression: array of const): IGpSQLBuilder; overload;
     property AsString: string read GetAsString;
@@ -250,7 +256,7 @@ type
   TGpSQLBuilder = class(TInterfacedObject, IGpSQLBuilder)
   strict private
   type
-    TGpSQLSection = (secSelect, secJoin, secWhere, secGroupBy, secHaving, secOrderBy);
+    TGpSQLSection = (secSelect, secDelete, secUpdate, secJoin, secWhere, secGroupBy, secHaving, secOrderBy);
     TGpSQLSections = set of TGpSQLSection;
   var
     FActiveSection: TGpSQLSection;
@@ -259,6 +265,7 @@ type
     FASTColumns   : IGpSQLNames;
     FASTSection   : IGpSQLSection;
     FASTName      : IGpSQLName;
+    FTableNames   : IGpSQLNames;
   strict protected
     procedure AssertHaveName;
     procedure AssertSection(sections: TGpSQLSections);
@@ -281,6 +288,7 @@ type
     function  Column(const dbName, colName: string): IGpSQLBuilder; overload;
     function  Column(const colName: array of const): IGpSQLBuilder; overload;
     function  Column(const caseExpr: IGpSQLBuilderCase): IGpSQLBuilder; overload;
+    function  Delete: IGpSQLBuilder;
     function  Desc: IGpSQLBuilder;
     function  Distinct: IGpSQLBuilder;
     function  Expression(const term: string = ''): IGpSQLBuilderExpression; overload;
@@ -304,7 +312,10 @@ type
     function  RightJoin(const dbName: string): IGpSQLBuilder;
     function  Select(const colName: string = ''): IGpSQLBuilder; overload;
     function  Select(const caseExpr: IGpSQLBuilderCase): IGpSQLBuilder; overload;
+    function  &Set(const colName, colValue: string): IGpSQLBuilder; overload;
+    function  &Set(const colName: string; const colValue: array of const): IGpSQLBuilder; overload;
     function  Skip(num: integer): IGpSQLBuilder;
+    function  Update(const tableName: string): IGpSQLBuilder;
     function  Where(const expression: string = ''): IGpSQLBuilder; overload;
     function  Where(const expression: array of const): IGpSQLBuilder; overload;
     property AsString: string read GetAsString;
@@ -614,7 +625,7 @@ end; { TGpSQLBuilder.&And }
 
 function TGpSQLBuilder.&As(const alias: string): IGpSQLBuilder;
 begin
-  AssertSection([secSelect, secJoin]);
+  AssertSection([secSelect, secDelete, secJoin]);
   AssertHaveName;
 
   FASTName.Alias := alias;
@@ -720,8 +731,8 @@ end; { TGpSQLBuilder.First }
 
 function TGpSQLBuilder.From(const dbName: string): IGpSQLBuilder;
 begin
-  AssertSection([secSelect]);
-  FASTName := (FASTSection as IGpSQLSelect).TableNames.Add;
+  AssertSection([secSelect, secDelete]);
+  FASTName := FTableNames.Add;
   FASTName.Name := dbName;
   Result := Self;
 end; { TGpSQLBuilder.From }
@@ -837,6 +848,12 @@ begin
   Result := Self;
 end; { TGpSQLBuilder.CreateJoin }
 
+function TGpSQLBuilder.Delete: IGpSQLBuilder;
+begin
+  SelectSection(secDelete);
+  Result := Self;
+end; { TGpSQLBuilder.Delete }
+
 function TGpSQLBuilder.Distinct: IGpSQLBuilder;
 var
   qual: IGpSQLSelectQualifier;
@@ -875,36 +892,72 @@ begin
         FASTSection := FAST.Select;
         FASTColumns := FAST.Select.Columns;
         FActiveExpr := nil;
+        FTableNames := FAST.Select.TableNames;
+      end;
+    secDelete:
+      begin
+        FASTSection := FAST.Delete;
+        FASTColumns := nil;
+        FActiveExpr := nil;
+        FTableNames := FAST.Delete.TableNames;
+      end;
+    secUpdate:
+      begin
+        FASTSection := FAST.Update;
+        FASTColumns := nil;
+        FActiveExpr := nil;
+        FTableNames := nil;
       end;
     secWhere:
       begin
         FASTSection := FAST.Where;
         FASTColumns := nil;
         FActiveExpr := TGpSQLBuilderExpression.Create(FAST.Where.Expression);
+        FTableNames := nil;
       end;
     secGroupBy:
       begin
         FASTSection := FAST.GroupBy;
         FASTColumns := FAST.GroupBy.Columns;
         FActiveExpr := nil;
+        FTableNames := nil;
       end;
     secHaving:
       begin
         FASTSection := FAST.Having;
         FASTColumns := nil;
         FActiveExpr := TGpSQLBuilderExpression.Create(FAST.Having.Expression);
+        FTableNames := nil;
       end;
     secOrderBy:
       begin
         FASTSection := FAST.OrderBy;
         FASTColumns := FAST.OrderBy.Columns;
         FActiveExpr := nil;
+        FTableNames := nil;
       end;
     else
       raise Exception.Create('TGpSQLBuilder.SelectSection: Unknown section');
   end;
   FActiveSection := section;
 end; { TGpSQLBuilder.SelectSection }
+
+function TGpSQLBuilder.&Set(const colName, colValue: string): IGpSQLBuilder;
+var
+  pair: IGpSQLNameValue;
+begin
+  AssertSection([secUpdate]);
+  pair := (FASTSection as IGpSQLUpdate).Values.Add;
+  pair.Name := colName;
+  pair.Value := colValue;
+  Result := Self;
+end; { TGpSQLBuilder }
+
+function TGpSQLBuilder.&Set(const colName: string; const colValue: array of const):
+  IGpSQLBuilder;
+begin
+  Result := &Set(colName, SqlParamsToStr(colValue));
+end; { TGpSQLBuilder }
 
 function TGpSQLBuilder.Skip(num: integer): IGpSQLBuilder;
 var
@@ -916,6 +969,13 @@ begin
   qual.Value := num;
   Result := Self;
 end; { TGpSQLBuilder.Skip }
+
+function TGpSQLBuilder.Update(const tableName: string): IGpSQLBuilder;
+begin
+  SelectSection(secUpdate);
+  (FASTSection as IGpSQLUpdate).TableName := tableName;
+  Result := Self;
+end; { TGpSQLBuilder.Update }
 
 function TGpSQLBuilder.Where(const expression: string): IGpSQLBuilder;
 begin

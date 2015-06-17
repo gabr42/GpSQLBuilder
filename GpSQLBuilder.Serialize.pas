@@ -31,10 +31,12 @@
 ///
 ///   Author            : Primoz Gabrijelcic
 ///   Creation date     : 2015-04-20
-///   Last modification : 2015-05-05
-///   Version           : 1.02
+///   Last modification : 2015-06-17
+///   Version           : 1.03
 ///</para><para>
 ///   History:
+///     1.03: 2015-06-17
+///       - Added support for Update and Delete statements.
 ///     1.02: 2015-05-05
 ///       - Select.TableNames must be serialized as a list.
 ///       - IGpSQLColums was renamed to IGpSQLNames.
@@ -103,14 +105,17 @@ type
     function SerializeNames(const columns: IGpSQLNames): string;
     function  SerializeDirection(direction: TGpSQLOrderByDirection): string;
     function  SerializeExpression(const expression: IGpSQLExpression): string;
+    function  SerializeDelete: string;
     function  SerializeGroupBy: string;
     function  SerializeHaving: string;
     function  SerializeJoins: string;
     function  SerializeJoinType(const join: IGpSQLJoin): string;
     function  SerializeName(const name: IGpSQLName): string;
+    function SerializeNameValuePairs(const pairs: IGpSQLNameValuePairs): string;
     function  SerializeOrderBy: string;
     function  SerializeSelect: string;
     function  SerializeSelectQualifiers(const qualifiers: IGpSQLSelectQualifiers): string;
+    function  SerializeUpdate: string;
     function  SerializeWhere: string;
   public
     constructor Create(const AAST: IGpSQLAST);
@@ -238,6 +243,8 @@ function TGpSQLSerializer.AsString: string;
 begin
   Result := Concatenate([
     SerializeSelect,
+    SerializeDelete,
+    SerializeUpdate,
     SerializeJoins,
     SerializeWhere,
     SerializeGroupBy,
@@ -249,6 +256,14 @@ function TGpSQLSerializer.SerializeCase(const caseExpr: IGpSQLCase): string;
 begin
   Result := CreateSQLSerializer(caseExpr).AsString;
 end; { TGpSQLSerializer.SerializeCase }
+
+function TGpSQLSerializer.SerializeDelete: string;
+begin
+  if FAST.Delete.IsEmpty then
+    Result := ''
+  else
+    Result := Concatenate(['DELETE', 'FROM', SerializeNames(FAST.Delete.TableNames)]);
+end; { TGpSQLSerializer.SerializeDelete }
 
 function TGpSQLSerializer.SerializeDirection(direction: TGpSQLOrderByDirection): string;
 begin
@@ -328,6 +343,17 @@ begin
   end;
 end; { TGpSQLSerializer.SerializeNames }
 
+function TGpSQLSerializer.SerializeNameValuePairs(const pairs: IGpSQLNameValuePairs):
+  string;
+var
+  i   : integer;
+  item: IGpSQLNameValue;
+begin
+  Result := '';
+  for i := 0 to pairs.Count - 1 do
+    Result := Concatenate([Result, Concatenate([pairs[i].Name, '=', pairs[i].Value])], ', ');
+end; { TGpSQLSerializer.SerializeNameValuePairs }
+
 function TGpSQLSerializer.SerializeOrderBy: string;
 begin
   if FAST.OrderBy.IsEmpty then
@@ -359,6 +385,15 @@ begin
       else raise Exception.Create('TGpSQLSerializer.SerializeSelectQualifiers: Unknown qualifier');
     end;
 end; { TGpSQLSerializer.SerializeSelectQualifiers }
+
+function TGpSQLSerializer.SerializeUpdate: string;
+begin
+  if FAST.Update.IsEmpty then
+    Result := ''
+  else
+    Result := Concatenate(['UPDATE', FAST.Update.TableName, 'SET',
+      SerializeNameValuePairs(FAST.Update.Values)]);
+end; { TGpSQLSerializer.SerializeUpdate }
 
 function TGpSQLSerializer.SerializeWhere: string;
 begin
