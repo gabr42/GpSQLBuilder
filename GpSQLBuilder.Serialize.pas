@@ -343,11 +343,9 @@ begin
   end;
 end; { TGpSQLSerializer.SerializeNames }
 
-function TGpSQLSerializer.SerializeNameValuePairs(const pairs: IGpSQLNameValuePairs):
-  string;
+function TGpSQLSerializer.SerializeNameValuePairs(const pairs: IGpSQLNameValuePairs): string;
 var
-  i   : integer;
-  item: IGpSQLNameValue;
+  i: integer;
 begin
   Result := '';
   for i := 0 to pairs.Count - 1 do

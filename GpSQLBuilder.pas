@@ -31,10 +31,18 @@
 ///
 ///   Author            : Primoz Gabrijelcic
 ///   Creation date     : 2010-11-24
-///   Last modification : 2015-06-17
-///   Version           : 3.03
+///   Last modification : 2015-06-18
+///   Version           : 3.04
 ///</para><para>
 ///   History:
+///     3.04: 2015-06-18
+///       - Following methods now accept `expression: IGpSQLBuilderExpression` parameter:
+///         IGpSQLBuilderCase.When, IGpSQLBuilder.&Case, IGpSQLBuilder.Having,
+///         IGpSQLBuilder.Where.
+///       - TGpSQLBuilderExpression.&Or can be used on an empty expression (it is
+///         silently converted to &And). This simplifies writing `for` loops which
+///         add conditions with &Or.
+///       - Added helper class SQL.
 ///     3.03: 2015-06-17
 ///       - Added .Update, .&Set, and .Delete methods.
 ///     3.02: 2015-05-05
@@ -138,6 +146,7 @@ type
     function  &Then(const value: int64): IGpSQLBuilderCase; overload;
     function  When(const condition: string): IGpSQLBuilderCase; overload;
     function  When(const condition: array of const): IGpSQLBuilderCase; overload;
+    function  When(const condition: IGpSQLBuilderExpression): IGpSQLBuilderCase; overload;
     property &Case: IGpSQLCase read GetCase;
     property AsString: string read GetAsString;
   end; { IGpSQLBuilderCase }
@@ -150,6 +159,7 @@ type
     function &As(const alias: string): IGpSQLBuilder;
     function &Case(const expression: string = ''): IGpSQLBuilderCase; overload;
     function &Case(const expression: array of const): IGpSQLBuilderCase; overload;
+    function &Case(const expression: IGpSQLBuilderExpression): IGpSQLBuilderCase; overload;
     function &On(const expression: string): IGpSQLBuilder; overload;
     function &On(const expression: array of const): IGpSQLBuilder; overload;
     function &Or(const expression: string): IGpSQLBuilder; overload;
@@ -176,6 +186,7 @@ type
     function GroupBy(const colName: string = ''): IGpSQLBuilder;
     function Having(const expression: string = ''): IGpSQLBuilder; overload;
     function Having(const expression: array of const): IGpSQLBuilder; overload;
+    function Having(const expression: IGpSQLBuilderExpression): IGpSQLBuilder; overload;
     function InnerJoin(const dbName: string): IGpSQLBuilder;
     function IsEmpty: boolean;
     function LeftJoin(const dbName: string): IGpSQLBuilder;
@@ -190,9 +201,34 @@ type
     function Update(const tableName: string): IGpSQLBuilder;
     function Where(const expression: string = ''): IGpSQLBuilder; overload;
     function Where(const expression: array of const): IGpSQLBuilder; overload;
+    function Where(const expression: IGpSQLBuilderExpression): IGpSQLBuilder; overload;
     property AsString: string read GetAsString;
     property AST: IGpSQLAST read GetAST;
   end; { IGpSQLBuilder }
+
+  SQL = class
+    class function Count(const s: string): string; overload;
+    class function Count(const s: IGpSQLBuilder): string; overload;
+    class function Count(const s: IGpSQLBuilderExpression): string; overload;
+    class function Exists(const s: string): string; overload;
+    class function Exists(const s: IGpSQLBuilder): string; overload;
+    class function Exists(const s: IGpSQLBuilderExpression): string; overload;
+    class function Lower(const s: string): string; overload;
+    class function Lower(const s: IGpSQLBuilder): string; overload;
+    class function Lower(const s: IGpSQLBuilderExpression): string; overload;
+    class function Min(const s: string): string; overload;
+    class function Min(const s: IGpSQLBuilder): string; overload;
+    class function Min(const s: IGpSQLBuilderExpression): string; overload;
+    class function Max(const s: string): string; overload;
+    class function Max(const s: IGpSQLBuilder): string; overload;
+    class function Max(const s: IGpSQLBuilderExpression): string; overload;
+    class function Upper(const s: string): string; overload;
+    class function Upper(const s: IGpSQLBuilder): string; overload;
+    class function Upper(const s: IGpSQLBuilderExpression): string; overload;
+    class function Q(const s: string): string; overload;
+    class function Q(const s: IGpSQLBuilder): string; overload;
+    class function Q(const s: IGpSQLBuilderExpression): string; overload;
+  end; { SQL }
 
 function CreateGpSQLBuilder: IGpSQLBuilder;
 
@@ -249,6 +285,7 @@ type
     function  &Then(const value: int64): IGpSQLBuilderCase; overload;
     function  When(const condition: string): IGpSQLBuilderCase; overload;
     function  When(const condition: array of const): IGpSQLBuilderCase; overload;
+    function  When(const condition: IGpSQLBuilderExpression): IGpSQLBuilderCase; overload;
     property &Case: IGpSQLCase read GetCase;
     property AsString: string read GetAsString;
   end; { TGpSQLBuilderCase }
@@ -282,6 +319,7 @@ type
     function  &As(const alias: string): IGpSQLBuilder;
     function  &Case(const expression: string = ''): IGpSQLBuilderCase; overload;
     function  &Case(const expression: array of const): IGpSQLBuilderCase; overload;
+    function  &Case(const expression: IGpSQLBuilderExpression): IGpSQLBuilderCase; overload;
     function  Clear: IGpSQLBuilder;
     function  ClearAll: IGpSQLBuilder;
     function  Column(const colName: string): IGpSQLBuilder; overload;
@@ -299,6 +337,7 @@ type
     function  GroupBy(const colName: string = ''): IGpSQLBuilder;
     function  Having(const expression: string = ''): IGpSQLBuilder; overload;
     function  Having(const expression: array of const): IGpSQLBuilder; overload;
+    function  Having(const expression: IGpSQLBuilderExpression): IGpSQLBuilder; overload;
     function  InnerJoin(const dbName: string): IGpSQLBuilder;
     function  IsEmpty: boolean;
     function  LeftJoin(const dbName: string): IGpSQLBuilder;
@@ -318,6 +357,7 @@ type
     function  Update(const tableName: string): IGpSQLBuilder;
     function  Where(const expression: string = ''): IGpSQLBuilder; overload;
     function  Where(const expression: array of const): IGpSQLBuilder; overload;
+    function  Where(const expression: IGpSQLBuilderExpression): IGpSQLBuilder; overload;
     property AsString: string read GetAsString;
     property AST: IGpSQLAST read GetAST;
   end; { TGpSQLBuilder }
@@ -479,10 +519,16 @@ begin
 end; { TGpSQLBuilderCase.When }
 
 function TGpSQLBuilderCase.When(const condition: string): IGpSQLBuilderCase;
+begin
+  Result := When(TGpSQLBuilderExpression.Create(condition));
+end; { TGpSQLBuilderCase.When }
+
+function TGpSQLBuilderCase.When(const condition: IGpSQLBuilderExpression):
+  IGpSQLBuilderCase;
 var
   wt: IGpSQLCaseWhenThen;
 begin
-  FLastExpr := TGpSQLBuilderExpression.Create(condition);
+  FLastExpr := condition;
   wt := FCase.WhenList.Add;
   wt.WhenExpression := FLastExpr.Expression;
   Result := Self;
@@ -572,7 +618,7 @@ var
   node: IGpSQLExpression;
 begin
   if not assigned(FLastAnd) then
-    raise Exception.Create('TGpSQLBuilder.&&Or: OR can only be applied after AND')
+    Result := &And(expression)
   else begin
     node := CreateSQLExpression;
     node.Assign(FLastAnd);
@@ -653,6 +699,13 @@ function TGpSQLBuilder.&Case(const expression: array of const): IGpSQLBuilderCas
 begin
   Result := &Case(SqlParamsToStr(expression));
 end; { TGpSQLBuilder.&Case }
+
+function TGpSQLBuilder.&Case(const expression: IGpSQLBuilderExpression):
+  IGpSQLBuilderCase;
+begin
+  Result := TGpSQLBuilderCase.Create('');
+  Result.&And(expression);
+end; { TGpSQLBuilder }
 
 function TGpSQLBuilder.Clear: IGpSQLBuilder;
 begin
@@ -768,6 +821,12 @@ end; { TGpSQLBuilder.Having }
 function TGpSQLBuilder.Having(const expression: array of const): IGpSQLBuilder;
 begin
   Result := Having(SqlParamsToStr(expression));
+end; { TGpSQLBuilder.Having }
+
+function TGpSQLBuilder.Having(const expression: IGpSQLBuilderExpression): IGpSQLBuilder;
+begin
+  SelectSection(secHaving);
+  Result := &And(expression);
 end; { TGpSQLBuilder.Having }
 
 function TGpSQLBuilder.InnerJoin(const dbName: string): IGpSQLBuilder;
@@ -990,5 +1049,118 @@ function TGpSQLBuilder.Where(const expression: array of const): IGpSQLBuilder;
 begin
   Result := Where(SqlParamsToStr(expression));
 end; { TGpSQLBuilder.Where }
+
+function TGpSQLBuilder.Where(const expression: IGpSQLBuilderExpression): IGpSQLBuilder;
+begin
+  SelectSection(secWhere);
+  Result := &And(expression);
+end; { TGpSQLBuilder.Where }
+
+{ SQL }
+
+class function SQL.Count(const s: string): string;
+begin
+  Result := 'Count(' + s + ')';
+end; { SQL.Count }
+
+class function SQL.Count(const s: IGpSQLBuilderExpression): string;
+begin
+  Result := Count(s.AsString);
+end; { SQL.Count }
+
+class function SQL.Count(const s: IGpSQLBuilder): string;
+begin
+  Result := Count(s.AsString);
+end; { SQL.Count }
+
+class function SQL.Exists(const s: string): string;
+begin
+  Result := 'exists (' + s + ')';
+end; { SQL.Exists }
+
+class function SQL.Exists(const s: IGpSQLBuilder): string;
+begin
+  Result := Exists(s.AsString);
+end; { SQL.Exists }
+
+class function SQL.Exists(const s: IGpSQLBuilderExpression): string;
+begin
+  Result := Exists(s.AsString);
+end; { SQL.Exists }
+
+class function SQL.Lower(const s: string): string;
+begin
+  Result := 'Lower(' + s + ')';
+end; { SQL.Lower }
+
+class function SQL.Lower(const s: IGpSQLBuilder): string;
+begin
+  Result := Lower(s.AsString);
+end; { SQL.Lower }
+
+class function SQL.Lower(const s: IGpSQLBuilderExpression): string;
+begin
+  Result := Lower(s.AsString);
+end; { SQL.Lower }
+
+class function SQL.Max(const s: string): string;
+begin
+  Result := 'Max(' + s + ')';
+end; { SQL.Max }
+
+class function SQL.Max(const s: IGpSQLBuilder): string;
+begin
+  Result := Max(s.AsString);
+end; { SQL.Max }
+
+class function SQL.Max(const s: IGpSQLBuilderExpression): string;
+begin
+  Result := Max(s.AsString);
+end; { SQL.Max }
+
+class function SQL.Min(const s: string): string;
+begin
+  Result := 'Min(' + s + ')';
+end; { SQL.Min }
+
+class function SQL.Min(const s: IGpSQLBuilderExpression): string;
+begin
+  Result := Min(s.AsString);
+end; { SQL.Min }
+
+class function SQL.Min(const s: IGpSQLBuilder): string;
+begin
+  Result := Min(s.AsString);
+end; { SQL.Min }
+
+class function SQL.Upper(const s: string): string;
+begin
+  Result := 'Upper(' + s + ')';
+end; { SQL.Upper }
+
+class function SQL.Upper(const s: IGpSQLBuilder): string;
+begin
+  Result := Upper(s.AsString);
+end; { SQL.Upper }
+
+class function SQL.Upper(const s: IGpSQLBuilderExpression): string;
+begin
+  Result := Upper(s.AsString);
+end; { SQL.Upper }
+
+class function SQL.Q(const s: string): string;
+begin
+  Result := '''' + s + '''';
+end; { SQL.Q }
+
+class function SQL.Q(const s: IGpSQLBuilder): string;
+begin
+  Result := Q(s.AsString);
+end; { SQL.Q }
+
+class function SQL.Q(const s: IGpSQLBuilderExpression): string;
+begin
+  Result := Q(s.AsString);
+end; { SQL.Q }
 
 end.
