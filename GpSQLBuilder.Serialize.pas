@@ -48,6 +48,10 @@
 
 unit GpSQLBuilder.Serialize;
 
+{$IFDEF FPC}
+  {$MODE DELPHI}
+{$ENDIF}
+
 interface
 
 uses
@@ -73,8 +77,7 @@ function CreateSQLSerializer(const ast: IGpSQLAST): IGpSQLASTSerializer; overloa
 implementation
 
 uses
-  System.SysUtils,
-  GpSQLBuilder;
+  {$ifndef fpc}System.{$endif}SysUtils;
 
 type
   TGpSQLExpressionSerializer = class(TInterfacedObject, IGpSQLExpressionSerializer)

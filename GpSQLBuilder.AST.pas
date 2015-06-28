@@ -48,6 +48,10 @@
 
 unit GpSQLBuilder.AST;
 
+{$IFDEF FPC}
+  {$MODE DELPHI}
+{$ENDIF}
+
 interface
 
 uses
@@ -306,7 +310,7 @@ type
 implementation
 
 uses
-  System.SysUtils;
+  {$ifndef fpc}System.{$endif}SysUtils;
 
 type
   TGpSQLName = class(TInterfacedObject, IGpSQLName)
