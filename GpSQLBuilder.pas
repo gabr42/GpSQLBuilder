@@ -107,6 +107,10 @@
 
 unit GpSQLBuilder;
 
+{$IFDEF FPC}
+  {$MODE DELPHI}
+{$ENDIF}
+
 interface
 
 uses
@@ -235,9 +239,7 @@ function CreateGpSQLBuilder: IGpSQLBuilder;
 implementation
 
 uses
-  System.SysUtils,
-  System.StrUtils,
-  System.Generics.Collections,
+  {$ifndef fpc}System.{$endif}SysUtils,
   GpSQLBuilder.Serialize;
 
 type
@@ -374,6 +376,10 @@ end; { CreateGpSQLBuilder }
 function VarRecToString(const vr: TVarRec): string;
 const
   BoolChars: array [boolean] of string = ('F', 'T');
+{$ifndef fpc}
+type
+  PtrUInt = Integer;
+{$endif}
 begin
   case vr.VType of
     vtInteger:    Result := IntToStr(vr.VInteger);
@@ -381,7 +387,7 @@ begin
     vtChar:       Result := char(vr.VChar);
     vtExtended:   Result := FloatToStr(vr.VExtended^);
     vtString:     Result := string(vr.VString^);
-    vtPointer:    Result := IntToHex(integer(vr.VPointer),8);
+    vtPointer:    Result := IntToHex(PtrUInt(vr.VPointer),8);
     vtPChar:      Result := string(vr.VPChar^);
     vtObject:     Result := vr.VObject.ClassName;
     vtClass:      Result := vr.VClass.ClassName;
