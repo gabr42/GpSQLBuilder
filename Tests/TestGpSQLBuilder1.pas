@@ -10,7 +10,7 @@ type
   [TestFixture]
   TTestGpSQLBuilder = class(TObject)
   strict private
-    SQL: IGpSQLBuilder;
+    SQLB: IGpSQLBuilder;
   public
     [Setup]
     procedure Setup;
@@ -60,6 +60,10 @@ type
     [Test] procedure TestSectionEmpty3;
     [Test] procedure TestSectionNotEmpty;
     [Test] procedure TestSectionNotEmpty2;
+    [Test] procedure TestUpdate1;
+    [Test] procedure TestUpdate2;
+    [Test] procedure TestDelete;
+    [Test] procedure TestOrBeforeAnd;
   end;
 
   [TestFixture]
@@ -78,6 +82,25 @@ type
     [Test] procedure TestAnd2;
     [Test] procedure TestOr;
     [Test] procedure TestAndOr;
+  end;
+
+  [TestFixture]
+  TTestGpSQLBuilderSQL = class(TObject)
+  public
+    [Test] procedure TestCount1;
+    [Test] procedure TestCount2;
+    [Test] procedure TestExists1;
+    [Test] procedure TestExists2;
+    [Test] procedure TestLower1;
+    [Test] procedure TestLower2;
+    [Test] procedure TestMin1;
+    [Test] procedure TestMin2;
+    [Test] procedure TestMax1;
+    [Test] procedure TestMax2;
+    [Test] procedure TestUpper1;
+    [Test] procedure TestUpper2;
+    [Test] procedure TestQuote1;
+    [Test] procedure TestQuote2;
   end;
 
 implementation
@@ -108,12 +131,12 @@ const
 
 procedure TTestGpSQLBuilder.Setup;
 begin
-  SQL := CreateGpSQLBuilder;
+  SQLB := CreateGpSQLBuilder;
 end;
 
 procedure TTestGpSQLBuilder.TearDown;
 begin
-  SQL := nil;
+  SQLB := nil;
 end;
 
 procedure TTestGpSQLBuilder.TestSelectCaseIntegration;
@@ -121,15 +144,15 @@ const
   CExpected = 'SELECT (CASE WHEN Column2 < 0 THEN 0 WHEN Column2 > 100 THEN 2 ' +
     'ELSE 1 END) FROM Test';
 begin
-  SQL
+  SQLB
     .Select(
-      SQL.&Case
+      SQLB.&Case
         .When([COL_2, '< 0']).&Then('0')
         .When([COL_2, '> 100']).&Then('2')
         .&Else('1')
       .&End)
     .From(DB_TEST);
-  Assert.AreEqual(CExpected, SQL.AsString);
+  Assert.AreEqual(CExpected, SQLB.AsString);
 end;
 
 procedure TTestGpSQLBuilder.TestSelectCaseAliasIntegration;
@@ -137,50 +160,61 @@ const
   CExpected = 'SELECT (CASE WHEN Column2 < 0 THEN 0 WHEN Column2 > 100 THEN 2 ' +
     'ELSE 1 END) AS CS FROM Test';
 begin
-  SQL
+  SQLB
     .Select(
-      SQL.&Case
+      SQLB.&Case
         .When([COL_2, '< 0']).&Then('0')
         .When([COL_2, '> 100']).&Then('2')
         .&Else('1')
       .&End).&As(COL_CASE_ALIAS)
     .From(DB_TEST);
-  Assert.AreEqual(CExpected, SQL.AsString);
+  Assert.AreEqual(CExpected, SQLB.AsString);
 end;
 
 procedure TTestGpSQLBuilder.TestOrderByCaseIntegration;
 const
   CExpected = 'SELECT * FROM Test ORDER BY (CASE WHEN Column2 < 0 THEN Column3 ELSE Column4 END)';
 begin
-  SQL
+  SQLB
     .Select.All
     .From(DB_TEST)
     .OrderBy(
-      SQL.&Case
+      SQLB.&Case
         .When([COL_2, '< 0']).&Then(COL_3)
         .&Else(COL_4)
       .&End);
-  Assert.AreEqual(CExpected, SQL.AsString);
+  Assert.AreEqual(CExpected, SQLB.AsString);
 end;
 
 procedure TTestGpSQLBuilder.TestColumnAlias;
 const
   CExpected = 'SELECT * AS ALL FROM Test';
 begin
-  SQL
+  SQLB
     .Select('*').&As(COL_ALL_ALIAS)
     .From(DB_TEST);
-  Assert.AreEqual(CExpected, SQL.AsString);
+  Assert.AreEqual(CExpected, SQLB.AsString);
 end;
 
 procedure TTestGpSQLBuilder.TestDBAlias;
 const
   CExpected = 'SELECT * FROM Test AS TestAlias';
 begin
-  SQL
+  SQLB
     .Select('*')
     .From(DB_TEST).&As(DB_TEST_ALIAS);
-  Assert.AreEqual(CExpected, SQL.AsString);
+  Assert.AreEqual(CExpected, SQLB.AsString);
+end;
+
+procedure TTestGpSQLBuilder.TestDelete;
+const
+  CExpected = 'DELETE FROM Test WHERE Column1 <> 123';
+begin
+  SQLB
+    .Delete
+      .From(DB_TEST)
+    .Where([COL_1, '<>', 123]);
+  Assert.AreEqual(CExpected, SQLB.AsString);
 end;
 
 procedure TTestGpSQLBuilder.TestDoubleLeftJoin;
@@ -188,409 +222,446 @@ const
   CExpected = 'SELECT * FROM Test LEFT JOIN Detail ON Column1 = DetailID ' +
     'LEFT JOIN Sub ON DetailID = SubID';
 begin
-  SQL
+  SQLB
     .Select.All
     .From(DB_TEST)
      .LeftJoin(DB_DETAIL).On([COL_1, '=', COL_DETAIL_ID])
      .LeftJoin(DB_SUB).On([COL_DETAIL_ID, '=', COL_SUB_ID]);
-  Assert.AreEqual(CExpected, SQL.AsString);
+  Assert.AreEqual(CExpected, SQLB.AsString);
 end;
 
 procedure TTestGpSQLBuilder.TestEmptyResult;
 begin
-  Assert.IsEmpty(SQL.AsString);
+  Assert.IsEmpty(SQLB.AsString);
 end;
 
 procedure TTestGpSQLBuilder.TestExpressionIntegration;
 const
   CExpected = 'SELECT * FROM Test WHERE (Column1 IS NULL) AND ((Column2 < 0) OR (Column2 > 10))';
 begin
-  SQL
+  SQLB
     .Select.All
     .From(DB_TEST)
     .Where
       .&And([COL_1, 'IS NULL'])
       .&And(
-        SQL.Expression([COL_2, '< 0'])
+        SQLB.Expression([COL_2, '< 0'])
          .&Or([COL_2, '> 10']));
-  Assert.AreEqual(CExpected, SQL.AsString);
+  Assert.AreEqual(CExpected, SQLB.AsString);
 end;
 
 procedure TTestGpSQLBuilder.TestGroupBy;
 const
   CExpected = 'SELECT * FROM Test GROUP BY Column2';
 begin
-  SQL
+  SQLB
     .Select.All
     .From(DB_TEST)
     .GroupBy(COL_2);
-  Assert.AreEqual(CExpected, SQL.AsString);
+  Assert.AreEqual(CExpected, SQLB.AsString);
 end;
 
 procedure TTestGpSQLBuilder.TestGroupByHaving;
 const
   CExpected = 'SELECT * FROM Test GROUP BY Column2 HAVING Column2 > 0';
 begin
-  SQL
+  SQLB
     .Select.All
     .From(DB_TEST)
     .GroupBy(COL_2)
     .Having([COL_2, '> 0']);
-  Assert.AreEqual(CExpected, SQL.AsString);
+  Assert.AreEqual(CExpected, SQLB.AsString);
 end;
 
 procedure TTestGpSQLBuilder.TestLeftJoin;
 const
   CExpected = 'SELECT * FROM Test LEFT JOIN Detail ON Column1 = DetailID';
 begin
-  SQL
+  SQLB
     .Select.All
     .From(DB_TEST)
      .LeftJoin(DB_DETAIL).On([COL_1, '=', COL_DETAIL_ID]);
-  Assert.AreEqual(CExpected, SQL.AsString);
+  Assert.AreEqual(CExpected, SQLB.AsString);
 end;
 
 procedure TTestGpSQLBuilder.TestLeftJoin2;
 const
   CExpected = 'SELECT * FROM Test LEFT JOIN Detail ON Column1 = DetailID';
 begin
-  SQL
+  SQLB
     .Select.All
     .From(DB_TEST)
      .LeftJoin(DB_DETAIL).On(Format('%s = %s', [COL_1, COL_DETAIL_ID]));
-  Assert.AreEqual(CExpected, SQL.AsString);
+  Assert.AreEqual(CExpected, SQLB.AsString);
 end;
 
 procedure TTestGpSQLBuilder.TestLeftJoinAlias;
 const
   CExpected = 'SELECT * FROM Test LEFT JOIN Detail AS DetailAlias ON Column1 = DetailID';
 begin
-  SQL
+  SQLB
     .Select.All
     .From(DB_TEST)
      .LeftJoin(DB_DETAIL).&As(DB_DETAIL_ALIAS)
        .On([COL_1, '=', COL_DETAIL_ID]);
-  Assert.AreEqual(CExpected, SQL.AsString);
+  Assert.AreEqual(CExpected, SQLB.AsString);
 end;
 
 procedure TTestGpSQLBuilder.TestLeftJoinAnd;
 const
   CExpected = 'SELECT * FROM Test LEFT JOIN Detail ON (Column1 = DetailID) AND (Detail2 > 0)';
 begin
-  SQL
+  SQLB
     .Select.All
     .From(DB_TEST)
      .LeftJoin(DB_DETAIL)
        .On([COL_1, '=', COL_DETAIL_ID])
        .&And([COL_DETAIL_2, '> 0']);
-  Assert.AreEqual(CExpected, SQL.AsString);
+  Assert.AreEqual(CExpected, SQLB.AsString);
 end;
 
 procedure TTestGpSQLBuilder.TestRightJoin;
 const
   CExpected = 'SELECT * FROM Test RIGHT JOIN Detail ON Column1 = DetailID';
 begin
-  SQL
+  SQLB
     .Select.All
     .From(DB_TEST)
      .RightJoin(DB_DETAIL).On([COL_1, '=', COL_DETAIL_ID]);
-  Assert.AreEqual(CExpected, SQL.AsString);
+  Assert.AreEqual(CExpected, SQLB.AsString);
 end;
 
 procedure TTestGpSQLBuilder.TestFullJoin;
 const
   CExpected = 'SELECT * FROM Test FULL JOIN Detail ON Column1 = DetailID';
 begin
-  SQL
+  SQLB
     .Select.All
     .From(DB_TEST)
      .FullJoin(DB_DETAIL).On([COL_1, '=', COL_DETAIL_ID]);
-  Assert.AreEqual(CExpected, SQL.AsString);
+  Assert.AreEqual(CExpected, SQLB.AsString);
 end;
 
 procedure TTestGpSQLBuilder.TestInnerJoin;
 const
   CExpected = 'SELECT * FROM Test INNER JOIN Detail ON Column1 = DetailID';
 begin
-  SQL
+  SQLB
     .Select.All
     .From(DB_TEST)
      .InnerJoin(DB_DETAIL).On([COL_1, '=', COL_DETAIL_ID]);
-  Assert.AreEqual(CExpected, SQL.AsString);
+  Assert.AreEqual(CExpected, SQLB.AsString);
 end;
 
 procedure TTestGpSQLBuilder.TestMixed;
 const
   CExpected = 'SELECT * FROM Test WHERE (Column1 IS NOT NULL) AND (Column2 > 0)';
 begin
-  SQL.Select.All;
-  SQL.Where([COL_1, 'IS NOT NULL']);
-  SQL.Select.From(DB_TEST);
-  SQL.Where.&And([COL_2, '> 0']);
-  Assert.AreEqual(CExpected, SQL.AsString);
+  SQLB.Select.All;
+  SQLB.Where([COL_1, 'IS NOT NULL']);
+  SQLB.Select.From(DB_TEST);
+  SQLB.Where.&And([COL_2, '> 0']);
+  Assert.AreEqual(CExpected, SQLB.AsString);
+end;
+
+procedure TTestGpSQLBuilder.TestOrBeforeAnd;
+const
+  CExpected = 'SELECT * FROM Test WHERE (((Column1 = 1) OR (Column1 = 2)) OR (Column1 = 3))';
+var
+  i: integer;
+begin
+  SQLB
+    .Select
+      .All
+      .From(DB_TEST);
+  for i := 1 to 3 do
+    SQLB.Where.&Or([COL_1, '=', i]);
+  Assert.AreEqual(CExpected, SQLB.AsString);
 end;
 
 procedure TTestGpSQLBuilder.TestOrderBy;
 const
   CExpected = 'SELECT * FROM Test ORDER BY Column1';
 begin
-  SQL
+  SQLB
     .Select.All
     .From(DB_TEST)
     .OrderBy(COL_1);
-  Assert.AreEqual(CExpected, SQL.AsString);
+  Assert.AreEqual(CExpected, SQLB.AsString);
 end;
 
 procedure TTestGpSQLBuilder.TestOrderBy2;
 const
   CExpected = 'SELECT * FROM Test ORDER BY Column1';
 begin
-  SQL
+  SQLB
     .Select.All
     .From(DB_TEST)
     .OrderBy
       .Column(COL_1);
-  Assert.AreEqual(CExpected, SQL.AsString);
+  Assert.AreEqual(CExpected, SQLB.AsString);
 end;
 
 procedure TTestGpSQLBuilder.TestOrderByDesc;
 const
   CExpected = 'SELECT * FROM Test ORDER BY Column1 DESC';
 begin
-  SQL
+  SQLB
     .Select.All
     .From(DB_TEST)
     .OrderBy(COL_1).Desc;
-  Assert.AreEqual(CExpected, SQL.AsString);
+  Assert.AreEqual(CExpected, SQLB.AsString);
 end;
 
 procedure TTestGpSQLBuilder.TestOrderByTwoColumns;
 const
   CExpected = 'SELECT * FROM Test ORDER BY Column1, Column2';
 begin
-  SQL
+  SQLB
     .Select.All
     .From(DB_TEST)
     .OrderBy
       .Column(COL_1)
       .Column(COL_2);
-  Assert.AreEqual(CExpected, SQL.AsString);
+  Assert.AreEqual(CExpected, SQLB.AsString);
 end;
 
 procedure TTestGpSQLBuilder.TestOrderByTwoColumnsDesc1;
 const
   CExpected = 'SELECT * FROM Test ORDER BY Column1 DESC, Column2';
 begin
-  SQL
+  SQLB
     .Select.All
     .From(DB_TEST)
     .OrderBy
       .Column(COL_1).Desc
       .Column(COL_2);
-  Assert.AreEqual(CExpected, SQL.AsString);
+  Assert.AreEqual(CExpected, SQLB.AsString);
 end;
 
 procedure TTestGpSQLBuilder.TestOrderByTwoColumnsDesc2;
 const
   CExpected = 'SELECT * FROM Test ORDER BY Column1, Column2 DESC';
 begin
-  SQL
+  SQLB
     .Select.All
     .From(DB_TEST)
     .OrderBy
       .Column(COL_1)
       .Column(COL_2).Desc;
-  Assert.AreEqual(CExpected, SQL.AsString);
+  Assert.AreEqual(CExpected, SQLB.AsString);
 end;
 
 procedure TTestGpSQLBuilder.TestSectionEmpty;
 begin
-  Assert.IsTrue(SQL.Select.IsEmpty);
+  Assert.IsTrue(SQLB.Select.IsEmpty);
 end;
 
 procedure TTestGpSQLBuilder.TestSectionEmpty2;
 begin
-  SQL.Select.All;
-  SQL.Select.Clear;
-  Assert.IsTrue(SQL.Select.IsEmpty);
+  SQLB.Select.All;
+  SQLB.Select.Clear;
+  Assert.IsTrue(SQLB.Select.IsEmpty);
 end;
 
 procedure TTestGpSQLBuilder.TestSectionEmpty3;
 begin
-  SQL.Select.All;
-  SQL.Select.Clear;
-  SQL.GroupBy(COL_1);
-  Assert.IsTrue(SQL.Select.IsEmpty);
+  SQLB.Select.All;
+  SQLB.Select.Clear;
+  SQLB.GroupBy(COL_1);
+  Assert.IsTrue(SQLB.Select.IsEmpty);
 end;
 
 procedure TTestGpSQLBuilder.TestSectionNotEmpty;
 begin
-  SQL.Select.All;
-  Assert.IsFalse(SQL.IsEmpty);
+  SQLB.Select.All;
+  Assert.IsFalse(SQLB.IsEmpty);
 end;
 
 procedure TTestGpSQLBuilder.TestSectionNotEmpty2;
 begin
-  SQL.Select.All;
-  SQL.OrderBy;
-  Assert.IsFalse(SQL.Select.IsEmpty);
+  SQLB.Select.All;
+  SQLB.OrderBy;
+  Assert.IsFalse(SQLB.Select.IsEmpty);
 end;
 
 procedure TTestGpSQLBuilder.TestSelectAll;
 const
   CExpected = 'SELECT * FROM Test';
 begin
-  SQL
+  SQLB
     .Select('*')
     .From(DB_TEST);
-  Assert.AreEqual(CExpected, SQL.AsString);
+  Assert.AreEqual(CExpected, SQLB.AsString);
 end;
 
 procedure TTestGpSQLBuilder.TestSelectAll2;
 const
   CExpected = 'SELECT * FROM Test';
 begin
-  SQL
+  SQLB
     .Select.All
     .From(DB_TEST);
-  Assert.AreEqual(CExpected, SQL.AsString);
+  Assert.AreEqual(CExpected, SQLB.AsString);
 end;
 
 procedure TTestGpSQLBuilder.TestSelectColumn;
 const
   CExpected = 'SELECT Column1 FROM Test';
 begin
-  SQL
+  SQLB
     .Select(COL_1)
     .From(DB_TEST);
-  Assert.AreEqual(CExpected, SQL.AsString);
+  Assert.AreEqual(CExpected, SQLB.AsString);
 end;
 
 procedure TTestGpSQLBuilder.TestSelectColumn2;
 const
   CExpected = 'SELECT Column1 FROM Test';
 begin
-  SQL
+  SQLB
     .Select
       .Column(COL_1)
     .From(DB_TEST);
-  Assert.AreEqual(CExpected, SQL.AsString);
+  Assert.AreEqual(CExpected, SQLB.AsString);
 end;
 
 procedure TTestGpSQLBuilder.TestSelectDBColumn;
 const
   CExpected = 'SELECT Test.Column1 FROM Test';
 begin
-  SQL
+  SQLB
     .Select
       .Column(DB_TEST, COL_1)
     .From(DB_TEST);
-  Assert.AreEqual(CExpected, SQL.AsString);
+  Assert.AreEqual(CExpected, SQLB.AsString);
 end;
 
 procedure TTestGpSQLBuilder.TestSelectTwoTables;
 const
   CExpected = 'SELECT Test.Column1, Detail.DetailID FROM Test, Detail';
 begin
-  SQL
+  SQLB
     .Select
       .Column(DB_TEST, COL_1)
       .Column(DB_DETAIL, COL_DETAIL_ID)
     .From(DB_TEST)
     .From(DB_DETAIL);
-  Assert.AreEqual(CExpected, SQL.AsString);
+  Assert.AreEqual(CExpected, SQLB.AsString);
 end;
 
 procedure TTestGpSQLBuilder.TestSelectFirst;
 const
   CExpected = 'SELECT FIRST 10 * FROM Test';
 begin
-  SQL
+  SQLB
     .Select
       .First(10)
       .All
     .From(DB_TEST);
-  Assert.AreEqual(CExpected, SQL.AsString);
+  Assert.AreEqual(CExpected, SQLB.AsString);
 end;
 
 procedure TTestGpSQLBuilder.TestSelectFirstSkip;
 const
   CExpected = 'SELECT FIRST 10 SKIP 5 * FROM Test';
 begin
-  SQL
+  SQLB
     .Select
       .First(10)
       .Skip(5)
       .All
     .From(DB_TEST);
-  Assert.AreEqual(CExpected, SQL.AsString);
+  Assert.AreEqual(CExpected, SQLB.AsString);
 end;
 
 procedure TTestGpSQLBuilder.TestSelectDistinct;
 const
   CExpected = 'SELECT DISTINCT * FROM Test';
 begin
-  SQL
+  SQLB
     .Select
       .Distinct
       .All
     .From(DB_TEST);
-  Assert.AreEqual(CExpected, SQL.AsString);
+  Assert.AreEqual(CExpected, SQLB.AsString);
 end;
 
 procedure TTestGpSQLBuilder.TestSelectTwoColumns;
 const
   CExpected = 'SELECT Column1, Column2 FROM Test';
 begin
-  SQL
+  SQLB
     .Select
       .Column(COL_1)
       .Column(COL_2)
     .From(DB_TEST);
-  Assert.AreEqual(CExpected, SQL.AsString);
+  Assert.AreEqual(CExpected, SQLB.AsString);
 end;
 
 procedure TTestGpSQLBuilder.TestSelectWhere;
 const
   CExpected = 'SELECT * FROM Test WHERE Column2 > 0';
 begin
-  SQL
+  SQLB
     .Select.All
     .From(DB_TEST)
     .Where([COL_2, '> 0']);
-  Assert.AreEqual(CExpected, SQL.AsString);
+  Assert.AreEqual(CExpected, SQLB.AsString);
+end;
+
+procedure TTestGpSQLBuilder.TestUpdate1;
+const
+  CExpected = 'UPDATE Test SET Column1 = ''new'' WHERE Column2 = ''old''';
+begin
+  SQLB
+    .Update(DB_TEST)
+    .&Set(COL_1, '''new''')
+    .Where([COL_2, '=', '''old''']);
+  Assert.AreEqual(CExpected, SQLB.AsString);
+end;
+
+procedure TTestGpSQLBuilder.TestUpdate2;
+const
+  CExpected = 'UPDATE Test SET Column1 = 42 WHERE Column2 = 17';
+begin
+  SQLB
+    .Update(DB_TEST)
+    .&Set(COL_1, [42])
+    .Where([COL_2, '=', 17]);
+  Assert.AreEqual(CExpected, SQLB.AsString);
 end;
 
 procedure TTestGpSQLBuilder.TestWhereAnd;
 const
   CExpected = 'SELECT * FROM Test WHERE (Column1 IS NOT NULL) AND (Column2 > 0)';
 begin
-  SQL
+  SQLB
     .Select.All
     .From(DB_TEST)
     .Where([COL_1, 'IS NOT NULL'])
       .&And([COL_2, '> 0']);
-  Assert.AreEqual(CExpected, SQL.AsString);
+  Assert.AreEqual(CExpected, SQLB.AsString);
 end;
 
 procedure TTestGpSQLBuilder.TestWhereAnd2;
 const
   CExpected = 'SELECT * FROM Test WHERE (Column1 IS NOT NULL) AND (Column2 > 0)';
 begin
-  SQL
+  SQLB
     .Select.All
     .From(DB_TEST)
     .Where
       .&And([COL_1, 'IS NOT NULL'])
       .&And([COL_2, '> 0']);
-  Assert.AreEqual(CExpected, SQL.AsString);
+  Assert.AreEqual(CExpected, SQLB.AsString);
 end;
 
 procedure TTestGpSQLBuilder.TestWhereAndOr;
 const
   CExpected = 'SELECT * FROM Test WHERE ((Column1 IS NULL) OR (Column1 = 0)) AND ((Column2 > 0) OR (Column2 < 10))';
 begin
-  SQL
+  SQLB
     .Select.All
     .From(DB_TEST)
     .Where
@@ -598,19 +669,19 @@ begin
         .&Or([COL_1, '= 0'])
       .&And([COL_2, '> 0'])
         .&Or([COL_2, '< 10']);
-  Assert.AreEqual(CExpected, SQL.AsString);
+  Assert.AreEqual(CExpected, SQLB.AsString);
 end;
 
 procedure TTestGpSQLBuilder.TestWhereOr;
 const
   CExpected = 'SELECT * FROM Test WHERE ((Column1 IS NOT NULL) OR (Column2 > 0))';
 begin
-  SQL
+  SQLB
     .Select.All
     .From(DB_TEST)
     .Where([COL_1, 'IS NOT NULL'])
       .&Or([COL_2, '> 0']);
-  Assert.AreEqual(CExpected, SQL.AsString);
+  Assert.AreEqual(CExpected, SQLB.AsString);
 end;
 
 { TTestGpSQLBuilderCase }
@@ -749,6 +820,109 @@ begin
   Assert.AreEqual(CExpected, expr.AsString);
 end;
 
+{ TTestGpSQLBuilderSQL }
+
+procedure TTestGpSQLBuilderSQL.TestCount1;
+const
+  CExpected = 'Count(x)';
+begin
+  Assert.AreEqual(SQL.Count('x'), CExpected);
+end;
+
+procedure TTestGpSQLBuilderSQL.TestCount2;
+const
+  CExpected = 'Count(x)';
+begin
+  Assert.AreEqual(SQL.Count(CreateGpSQLBuilder.Expression('x')), CExpected);
+end;
+
+procedure TTestGpSQLBuilderSQL.TestExists1;
+const
+  CExpected = 'exists (x)';
+begin
+  Assert.AreEqual(SQL.Exists('x'), CExpected);
+end;
+
+procedure TTestGpSQLBuilderSQL.TestExists2;
+const
+  CExpected = 'exists (x)';
+begin
+  Assert.AreEqual(SQL.Exists(CreateGpSQLBuilder.Expression('x')), CExpected);
+end;
+
+procedure TTestGpSQLBuilderSQL.TestLower1;
+const
+  CExpected = 'Lower(x)';
+begin
+  Assert.AreEqual(SQL.Lower('x'), CExpected);
+end;
+
+procedure TTestGpSQLBuilderSQL.TestLower2;
+const
+  CExpected = 'Lower(x)';
+begin
+  Assert.AreEqual(SQL.Lower(CreateGpSQLBuilder.Expression('x')), CExpected);
+end;
+
+procedure TTestGpSQLBuilderSQL.TestMax1;
+const
+  CExpected = 'Max(x)';
+begin
+  Assert.AreEqual(SQL.Max('x'), CExpected);
+end;
+
+procedure TTestGpSQLBuilderSQL.TestMax2;
+const
+  CExpected = 'Max(x)';
+begin
+  Assert.AreEqual(SQL.Max(CreateGpSQLBuilder.Expression('x')), CExpected);
+end;
+
+procedure TTestGpSQLBuilderSQL.TestMin1;
+const
+  CExpected = 'Min(x)';
+begin
+  Assert.AreEqual(SQL.Min('x'), CExpected);
+end;
+
+procedure TTestGpSQLBuilderSQL.TestMin2;
+const
+  CExpected = 'Min(x)';
+begin
+  Assert.AreEqual(SQL.Min(CreateGpSQLBuilder.Expression('x')), CExpected);
+end;
+
+procedure TTestGpSQLBuilderSQL.TestQuote1;
+const
+  CExpected = '''x''';
+begin
+  Assert.AreEqual(SQL.Q('x'), CExpected);
+end;
+
+procedure TTestGpSQLBuilderSQL.TestQuote2;
+const
+  CExpected = '''x''';
+begin
+  Assert.AreEqual(SQL.Q(CreateGpSQLBuilder.Expression('x')), CExpected);
+end;
+
+procedure TTestGpSQLBuilderSQL.TestUpper1;
+const
+  CExpected = 'Upper(x)';
+begin
+  Assert.AreEqual(SQL.Upper('x'), CExpected);
+end;
+
+procedure TTestGpSQLBuilderSQL.TestUpper2;
+const
+  CExpected = 'Upper(x)';
+begin
+  Assert.AreEqual(SQL.Upper(CreateGpSQLBuilder.Expression('x')), CExpected);
+end;
+
 initialization
   TDUnitX.RegisterTestFixture(TTestGpSQLBuilder);
+  TDUnitX.RegisterTestFixture(TTestGpSQLBuilderCase);
+  TDUnitX.RegisterTestFixture(TTestGpSQLBuilderExpression);
+  TDUnitX.RegisterTestFixture(TTestGpSQLBuilderSQL);
 end.
