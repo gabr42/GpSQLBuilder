@@ -310,7 +310,7 @@ type
 implementation
 
 uses
-  {$ifndef fpc}System.{$endif}SysUtils;
+  {$IFNDEF FPC}System.SysUtils{$ELSE}Sysutils{$ENDIF};
 
 type
   TGpSQLName = class(TInterfacedObject, IGpSQLName)

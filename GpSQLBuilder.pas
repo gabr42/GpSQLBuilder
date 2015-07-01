@@ -31,10 +31,12 @@
 ///
 ///   Author            : Primoz Gabrijelcic
 ///   Creation date     : 2010-11-24
-///   Last modification : 2015-06-18
-///   Version           : 3.04
+///   Last modification : 2015-06-30
+///   Version           : 3.04a
 ///</para><para>
 ///   History:
+///     3.04a: 2015-06-30
+///       - Fixed a bug when Where.&Or was called before Where.&And.
 ///     3.04: 2015-06-18
 ///       - Following methods now accept `expression: IGpSQLBuilderExpression` parameter:
 ///         IGpSQLBuilderCase.When, IGpSQLBuilder.&Case, IGpSQLBuilder.Having,
@@ -239,7 +241,7 @@ function CreateGpSQLBuilder: IGpSQLBuilder;
 implementation
 
 uses
-  {$ifndef fpc}System.{$endif}SysUtils,
+  {$IFNDEF FPCfpc}System.SysUtils{$ELSE}SysUtils{$ENDIF},
   GpSQLBuilder.Serialize;
 
 type
@@ -623,7 +625,7 @@ function TGpSQLBuilderExpression.&Or(const expression: IGpSQLExpression): IGpSQL
 var
   node: IGpSQLExpression;
 begin
-  if not assigned(FLastAnd) then
+  if (not assigned(FLastAnd)) or FLastAnd.IsEmpty then
     Result := &And(expression)
   else begin
     node := CreateSQLExpression;
