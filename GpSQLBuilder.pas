@@ -241,7 +241,7 @@ function CreateGpSQLBuilder: IGpSQLBuilder;
 implementation
 
 uses
-  {$IFNDEF FPCfpc}System.SysUtils{$ELSE}SysUtils{$ENDIF},
+  {$IFNDEF FPC}System.SysUtils{$ELSE}SysUtils{$ENDIF},
   GpSQLBuilder.Serialize;
 
 type
