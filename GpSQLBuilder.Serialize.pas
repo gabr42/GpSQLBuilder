@@ -35,6 +35,8 @@
 ///   Version           : 1.03
 ///</para><para>
 ///   History:
+///     1.04: 2015-07-12
+///       - Added support for Insert statement.
 ///     1.03: 2015-06-17
 ///       - Added support for Update and Delete statements.
 ///     1.02: 2015-05-05
@@ -114,10 +116,12 @@ type
     function  SerializeJoins: string;
     function  SerializeJoinType(const join: IGpSQLJoin): string;
     function  SerializeName(const name: IGpSQLName): string;
-    function SerializeNameValuePairs(const pairs: IGpSQLNameValuePairs): string;
+    function  SerializeNameValuePairsForInsert(const pairs: IGpSQLNameValuePairs): string;
+    function  SerializeNameValuePairsForUpdate(const pairs: IGpSQLNameValuePairs): string;
     function  SerializeOrderBy: string;
     function  SerializeSelect: string;
     function  SerializeSelectQualifiers(const qualifiers: IGpSQLSelectQualifiers): string;
+    function  SerializeInsert: string;
     function  SerializeUpdate: string;
     function  SerializeWhere: string;
   public
@@ -247,6 +251,7 @@ begin
   Result := Concatenate([
     SerializeSelect,
     SerializeDelete,
+    SerializeInsert,
     SerializeUpdate,
     SerializeJoins,
     SerializeWhere,
@@ -346,14 +351,28 @@ begin
   end;
 end; { TGpSQLSerializer.SerializeNames }
 
-function TGpSQLSerializer.SerializeNameValuePairs(const pairs: IGpSQLNameValuePairs): string;
+function TGpSQLSerializer.SerializeNameValuePairsForInsert(const pairs: IGpSQLNameValuePairs): string;
+var
+  i: integer;
+  Columns,Values: String;
+begin
+  Columns := '';
+  Values := '';
+  for i := 0 to pairs.Count - 1 do begin
+    Columns := Concatenate([Columns, pairs[i].Name], ', ');
+    Values := Concatenate([Values, pairs[i].Value], ', ');
+  end;
+  Result := Concatenate(['(', Columns, ') VALUES (', Values, ')'],'');
+end; { TGpSQLSerializer.SerializeNameValuePairsForInsert }
+
+function TGpSQLSerializer.SerializeNameValuePairsForUpdate(const pairs: IGpSQLNameValuePairs): string;
 var
   i: integer;
 begin
   Result := '';
   for i := 0 to pairs.Count - 1 do
     Result := Concatenate([Result, Concatenate([pairs[i].Name, '=', pairs[i].Value])], ', ');
-end; { TGpSQLSerializer.SerializeNameValuePairs }
+end; { TGpSQLSerializer.SerializeNameValuePairsForUpdate }
 
 function TGpSQLSerializer.SerializeOrderBy: string;
 begin
@@ -387,13 +406,22 @@ begin
     end;
 end; { TGpSQLSerializer.SerializeSelectQualifiers }
 
+function TGpSQLSerializer.SerializeInsert: string;
+begin
+  if FAST.Insert.IsEmpty then
+    Result := ''
+  else
+    Result := Concatenate(['INSERT INTO', FAST.Insert.TableName,
+      SerializeNameValuePairsForInsert(FAST.Insert.Values)]);
+end; { TGpSQLSerializer.SerializeInsert }
+
 function TGpSQLSerializer.SerializeUpdate: string;
 begin
   if FAST.Update.IsEmpty then
     Result := ''
   else
     Result := Concatenate(['UPDATE', FAST.Update.TableName, 'SET',
-      SerializeNameValuePairs(FAST.Update.Values)]);
+      SerializeNameValuePairsForUpdate(FAST.Update.Values)]);
 end; { TGpSQLSerializer.SerializeUpdate }
 
 function TGpSQLSerializer.SerializeWhere: string;

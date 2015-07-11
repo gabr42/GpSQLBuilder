@@ -35,6 +35,8 @@
 ///   Version           : 3.04a
 ///</para><para>
 ///   History:
+///     3.05: 2015-07-12
+///       - Added .Insert and .Into methods.
 ///     3.04a: 2015-06-30
 ///       - Fixed a bug when Where.&Or was called before Where.&And.
 ///     3.04: 2015-06-18
@@ -194,6 +196,8 @@ type
     function Having(const expression: array of const): IGpSQLBuilder; overload;
     function Having(const expression: IGpSQLBuilderExpression): IGpSQLBuilder; overload;
     function InnerJoin(const dbName: string): IGpSQLBuilder;
+    function Insert: IGpSQLBuilder;
+    function Into(const tableName: string): IGpSQLBuilder;
     function IsEmpty: boolean;
     function LeftJoin(const dbName: string): IGpSQLBuilder;
     function OrderBy(const colName: string = ''): IGpSQLBuilder; overload;
@@ -297,7 +301,7 @@ type
   TGpSQLBuilder = class(TInterfacedObject, IGpSQLBuilder)
   strict private
   type
-    TGpSQLSection = (secSelect, secDelete, secUpdate, secJoin, secWhere, secGroupBy, secHaving, secOrderBy);
+    TGpSQLSection = (secSelect, secDelete, secInsert, secUpdate, secJoin, secWhere, secGroupBy, secHaving, secOrderBy);
     TGpSQLSections = set of TGpSQLSection;
   var
     FActiveSection: TGpSQLSection;
@@ -342,6 +346,8 @@ type
     function  Having(const expression: string = ''): IGpSQLBuilder; overload;
     function  Having(const expression: array of const): IGpSQLBuilder; overload;
     function  Having(const expression: IGpSQLBuilderExpression): IGpSQLBuilder; overload;
+    function  Insert: IGpSQLBuilder;
+    function  Into(const tableName: string): IGpSQLBuilder;
     function  InnerJoin(const dbName: string): IGpSQLBuilder;
     function  IsEmpty: boolean;
     function  LeftJoin(const dbName: string): IGpSQLBuilder;
@@ -842,6 +848,19 @@ begin
   Result := CreateJoin(jtInner, dbName);
 end; { TGpSQLBuilder.InnerJoin }
 
+function TGpSQLBuilder.Insert: IGpSQLBuilder;
+begin
+  SelectSection(secInsert);
+  Result := Self;
+end; { TGpSQLBuilder.Insert }
+
+function TGpSQLBuilder.Into(const tableName: string): IGpSQLBuilder;
+begin
+  AssertSection([secInsert]);
+  (FASTSection as IGpSQLInsert).TableName := tableName;
+  Result := Self;
+end; { TGpSQLBuilder.Into }
+
 function TGpSQLBuilder.IsEmpty: boolean;
 begin
   Result := FASTSection.IsEmpty;
@@ -968,6 +987,13 @@ begin
         FActiveExpr := nil;
         FTableNames := FAST.Delete.TableNames;
       end;
+    secInsert:
+      begin
+        FASTSection := FAST.Insert;
+        FASTColumns := nil;
+        FActiveExpr := nil;
+        FTableNames := nil;
+      end;
     secUpdate:
       begin
         FASTSection := FAST.Update;
@@ -1013,8 +1039,11 @@ function TGpSQLBuilder.&Set(const colName, colValue: string): IGpSQLBuilder;
 var
   pair: IGpSQLNameValue;
 begin
-  AssertSection([secUpdate]);
-  pair := (FASTSection as IGpSQLUpdate).Values.Add;
+  AssertSection([secInsert,secUpdate]);
+  if FASTSection is IGpSQLInsert then
+    pair := (FASTSection as IGpSQLInsert).Values.Add
+  else
+    pair := (FASTSection as IGpSQLUpdate).Values.Add;
   pair.Name := colName;
   pair.Value := colValue;
   Result := Self;
