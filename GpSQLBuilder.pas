@@ -31,12 +31,16 @@
 ///
 ///   Author            : Primoz Gabrijelcic
 ///   Creation date     : 2010-11-24
-///   Last modification : 2015-06-30
-///   Version           : 3.04a
+///   Last modification : 2015-07-12
+///   Version           : 3.05
 ///</para><para>
 ///   History:
 ///     3.05: 2015-07-12
-///       - Added .Insert and .Into methods.
+///       - [leledumbo] Added .Insert and .Into methods.
+///       - Sorted TGpSQLBuilder implementation.
+///       - &Set(column, value: string) overload automatically adds quotes around the
+///         `value` parameter when converted to string. If you don't want that to
+///         happen, you can use the other overload: &Set(column, [value]).
 ///     3.04a: 2015-06-30
 ///       - Fixed a bug when Where.&Or was called before Where.&And.
 ///     3.04: 2015-06-18
@@ -306,17 +310,20 @@ type
   var
     FActiveSection: TGpSQLSection;
     FActiveExpr   : IGpSQLBuilderExpression;
+    FActiveValues : IGpSQLNameValuePairs;
     FAST          : IGpSQLAST;
     FASTColumns   : IGpSQLNames;
     FASTSection   : IGpSQLSection;
     FASTName      : IGpSQLName;
     FTableNames   : IGpSQLNames;
   strict protected
+    function  AutoQuote(const s: string): string;
     procedure AssertHaveName;
     procedure AssertSection(sections: TGpSQLSections);
     function  CreateJoin(joinType: TGpSQLJoinType; const dbName: string): IGpSQLBuilder;
     function  GetAsString: string;
     function  GetAST: IGpSQLAST;
+    function  InternalSet(const colName, colValue: string): IGpSQLBuilder;
     procedure SelectSection(section: TGpSQLSection);
   public
     constructor Create;
@@ -704,6 +711,14 @@ begin
     raise Exception.Create('TGpSQLBuilder: Not supported in this section');
 end; { TGpSQLBuilder.AssertSection }
 
+function TGpSQLBuilder.AutoQuote(const s: string): string;
+begin
+  if (s <> '') and (s[1] = '''') and (s[Length(s)] = '''') then
+    Result := s
+  else
+    Result := '''' + s + '''';
+end; { TGpSQLBuilder.AutoQuote }
+
 function TGpSQLBuilder.&Case(const expression: string = ''): IGpSQLBuilderCase;
 begin
   Result := TGpSQLBuilderCase.Create(expression);
@@ -767,6 +782,28 @@ begin
   Result := Self;
 end; { TGpSQLBuilder.Column }
 
+function TGpSQLBuilder.CreateJoin(joinType: TGpSQLJoinType; const dbName: string):
+  IGpSQLBuilder;
+var
+  join: IGpSQLJoin;
+begin
+  FActiveSection := secJoin;
+  join := FAST.Joins.Add;
+  join.JoinType := joinType;
+  FASTName := join.JoinedTable;
+  FASTName.Name := dbName;
+  FASTSection := join;
+  FASTColumns := nil;
+  FActiveExpr := TGpSQLBuilderExpression.Create(join.Condition);
+  Result := Self;
+end; { TGpSQLBuilder.CreateJoin }
+
+function TGpSQLBuilder.Delete: IGpSQLBuilder;
+begin
+  SelectSection(secDelete);
+  Result := Self;
+end; { TGpSQLBuilder.Delete }
+
 function TGpSQLBuilder.Desc: IGpSQLBuilder;
 begin
   AssertSection([secOrderBy]);
@@ -774,6 +811,16 @@ begin
   (FASTColumns[FASTColumns.Count - 1] as IGpSQLOrderByColumn).Direction := dirDescending;
   Result := Self;
 end; { TGpSQLBuilder.Desc }
+
+function TGpSQLBuilder.Distinct: IGpSQLBuilder;
+var
+  qual: IGpSQLSelectQualifier;
+begin
+  AssertSection([secSelect]);
+  qual := (FASTSection as IGpSQLSelect).Qualifiers.Add;
+  qual.Qualifier := sqDistinct;
+  Result := Self;
+end; { TGpSQLBuilder.Distinct }
 
 function TGpSQLBuilder.Expression(const term: string): IGpSQLBuilderExpression;
 begin
@@ -814,6 +861,11 @@ begin
   Result := CreateSQLSerializer(AST).AsString;
 end; { TGpSQLBuilder.GetAsString }
 
+function TGpSQLBuilder.GetAST: IGpSQLAST;
+begin
+  Result := FAST;
+end; { TGpSQLBuilder.GetAST }
+
 function TGpSQLBuilder.GroupBy(const colName: string): IGpSQLBuilder;
 begin
   SelectSection(secGroupBy);
@@ -853,6 +905,17 @@ begin
   SelectSection(secInsert);
   Result := Self;
 end; { TGpSQLBuilder.Insert }
+
+function TGpSQLBuilder.InternalSet(const colName, colValue: string): IGpSQLBuilder;
+var
+  pair: IGpSQLNameValue;
+begin
+  AssertSection([secInsert, secUpdate]);
+  pair := FActiveValues.Add;
+  pair.Name := colName;
+  pair.Value := colValue;
+  Result := Self;
+end; { TGpSQLBuilder.InternalSet }
 
 function TGpSQLBuilder.Into(const tableName: string): IGpSQLBuilder;
 begin
@@ -918,43 +981,6 @@ begin
   Result := Self;
 end; { TGpSQLBuilder.&Or }
 
-function TGpSQLBuilder.CreateJoin(joinType: TGpSQLJoinType; const dbName: string):
-  IGpSQLBuilder;
-var
-  join: IGpSQLJoin;
-begin
-  FActiveSection := secJoin;
-  join := FAST.Joins.Add;
-  join.JoinType := joinType;
-  FASTName := join.JoinedTable;
-  FASTName.Name := dbName;
-  FASTSection := join;
-  FASTColumns := nil;
-  FActiveExpr := TGpSQLBuilderExpression.Create(join.Condition);
-  Result := Self;
-end; { TGpSQLBuilder.CreateJoin }
-
-function TGpSQLBuilder.Delete: IGpSQLBuilder;
-begin
-  SelectSection(secDelete);
-  Result := Self;
-end; { TGpSQLBuilder.Delete }
-
-function TGpSQLBuilder.Distinct: IGpSQLBuilder;
-var
-  qual: IGpSQLSelectQualifier;
-begin
-  AssertSection([secSelect]);
-  qual := (FASTSection as IGpSQLSelect).Qualifiers.Add;
-  qual.Qualifier := sqDistinct;
-  Result := Self;
-end; { TGpSQLBuilder.Distinct }
-
-function TGpSQLBuilder.GetAST: IGpSQLAST;
-begin
-  Result := FAST;
-end; { TGpSQLBuilder.GetAST }
-
 function TGpSQLBuilder.Select(const colName: string): IGpSQLBuilder;
 begin
   SelectSection(secSelect);
@@ -975,59 +1001,68 @@ begin
   case section of
     secSelect:
       begin
-        FASTSection := FAST.Select;
-        FASTColumns := FAST.Select.Columns;
-        FActiveExpr := nil;
-        FTableNames := FAST.Select.TableNames;
+        FASTSection   := FAST.Select;
+        FASTColumns   := FAST.Select.Columns;
+        FActiveExpr   := nil;
+        FTableNames   := FAST.Select.TableNames;
+        FActiveValues := nil;
       end;
     secDelete:
       begin
-        FASTSection := FAST.Delete;
-        FASTColumns := nil;
-        FActiveExpr := nil;
-        FTableNames := FAST.Delete.TableNames;
+        FASTSection   := FAST.Delete;
+        FASTColumns   := nil;
+        FActiveExpr   := nil;
+        FTableNames   := FAST.Delete.TableNames;
+        FActiveValues := nil;
       end;
     secInsert:
       begin
-        FASTSection := FAST.Insert;
-        FASTColumns := nil;
-        FActiveExpr := nil;
-        FTableNames := nil;
+        FASTSection   := FAST.Insert;
+        FASTColumns   := nil;
+        FActiveExpr   := nil;
+        FTableNames   := nil;
+        FActiveValues := FAST.Insert.Values;
       end;
     secUpdate:
       begin
-        FASTSection := FAST.Update;
-        FASTColumns := nil;
-        FActiveExpr := nil;
-        FTableNames := nil;
+        FASTSection   := FAST.Update;
+        FASTColumns   := nil;
+        FActiveExpr   := nil;
+        FTableNames   := nil;
+        FActiveValues := nil;
+        FActiveValues := FAST.Update.Values;
       end;
     secWhere:
       begin
-        FASTSection := FAST.Where;
-        FASTColumns := nil;
-        FActiveExpr := TGpSQLBuilderExpression.Create(FAST.Where.Expression);
-        FTableNames := nil;
+        FASTSection   := FAST.Where;
+        FASTColumns   := nil;
+        FActiveExpr   := TGpSQLBuilderExpression.Create(FAST.Where.Expression);
+        FTableNames   := nil;
+        FActiveValues := nil;
       end;
     secGroupBy:
       begin
-        FASTSection := FAST.GroupBy;
-        FASTColumns := FAST.GroupBy.Columns;
-        FActiveExpr := nil;
-        FTableNames := nil;
+        FASTSection   := FAST.GroupBy;
+        FASTColumns   := FAST.GroupBy.Columns;
+        FActiveExpr   := nil;
+        FTableNames   := nil;
+        FActiveValues := nil;
       end;
     secHaving:
       begin
-        FASTSection := FAST.Having;
-        FASTColumns := nil;
-        FActiveExpr := TGpSQLBuilderExpression.Create(FAST.Having.Expression);
-        FTableNames := nil;
+        FASTSection   := FAST.Having;
+        FASTColumns   := nil;
+        FActiveExpr   := TGpSQLBuilderExpression.Create(FAST.Having.Expression);
+        FTableNames   := nil;
+        FActiveValues := nil;
       end;
     secOrderBy:
       begin
-        FASTSection := FAST.OrderBy;
-        FASTColumns := FAST.OrderBy.Columns;
-        FActiveExpr := nil;
-        FTableNames := nil;
+        FASTSection   := FAST.OrderBy;
+        FASTColumns   := FAST.OrderBy.Columns;
+        FActiveExpr   := nil;
+        FTableNames   := nil;
+        FActiveValues := nil;
       end;
     else
       raise Exception.Create('TGpSQLBuilder.SelectSection: Unknown section');
@@ -1036,23 +1071,14 @@ begin
 end; { TGpSQLBuilder.SelectSection }
 
 function TGpSQLBuilder.&Set(const colName, colValue: string): IGpSQLBuilder;
-var
-  pair: IGpSQLNameValue;
 begin
-  AssertSection([secInsert,secUpdate]);
-  if FASTSection is IGpSQLInsert then
-    pair := (FASTSection as IGpSQLInsert).Values.Add
-  else
-    pair := (FASTSection as IGpSQLUpdate).Values.Add;
-  pair.Name := colName;
-  pair.Value := colValue;
-  Result := Self;
+  Result := InternalSet(colName, AutoQuote(colValue));
 end; { TGpSQLBuilder }
 
 function TGpSQLBuilder.&Set(const colName: string; const colValue: array of const):
   IGpSQLBuilder;
 begin
-  Result := &Set(colName, SqlParamsToStr(colValue));
+  Result := InternalSet(colName, SqlParamsToStr(colValue));
 end; { TGpSQLBuilder }
 
 function TGpSQLBuilder.Skip(num: integer): IGpSQLBuilder;

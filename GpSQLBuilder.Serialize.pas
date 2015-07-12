@@ -31,12 +31,12 @@
 ///
 ///   Author            : Primoz Gabrijelcic
 ///   Creation date     : 2015-04-20
-///   Last modification : 2015-06-17
-///   Version           : 1.03
+///   Last modification : 2015-07-12
+///   Version           : 1.04
 ///</para><para>
 ///   History:
 ///     1.04: 2015-07-12
-///       - Added support for Insert statement.
+///       - [leledumbo] Added support for Insert statement.
 ///     1.03: 2015-06-17
 ///       - Added support for Update and Delete statements.
 ///     1.02: 2015-05-05

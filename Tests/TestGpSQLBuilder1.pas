@@ -64,6 +64,8 @@ type
     [Test] procedure TestUpdate2;
     [Test] procedure TestDelete;
     [Test] procedure TestOrBeforeAnd;
+    [Test] procedure TestInsert1;
+    [Test] procedure TestInsert2;
   end;
 
   [TestFixture]
@@ -353,6 +355,22 @@ begin
   Assert.AreEqual(CExpected, SQLB.AsString);
 end;
 
+procedure TTestGpSQLBuilder.TestInsert1;
+const
+  CExpected = 'INSERT INTO Test (Column1) VALUES (42)';
+begin
+  SQLB.Insert.Into(DB_TEST).&Set(COL_1, [42]);
+  Assert.AreEqual(CExpected, SQLB.AsString);
+end;
+
+procedure TTestGpSQLBuilder.TestInsert2;
+const
+  CExpected = 'INSERT INTO Test (Column1, Column2) VALUES (42, ''abc'')';
+begin
+  SQLB.Insert.Into(DB_TEST).&Set(COL_1, [42]).&Set(COL_2, 'abc');
+  Assert.AreEqual(CExpected, SQLB.AsString);
+end;
+
 procedure TTestGpSQLBuilder.TestMixed;
 const
   CExpected = 'SELECT * FROM Test WHERE (Column1 IS NOT NULL) AND (Column2 > 0)';
@@ -616,7 +634,7 @@ const
 begin
   SQLB
     .Update(DB_TEST)
-    .&Set(COL_1, '''new''')
+    .&Set(COL_1, 'new') //automatically quoted
     .Where([COL_2, '=', '''old''']);
   Assert.AreEqual(CExpected, SQLB.AsString);
 end;
