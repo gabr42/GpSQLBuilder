@@ -34,6 +34,8 @@
 ///   Last modification : 2015-06-17
 ///   Version           : 1.03
 ///   History:
+///     1.04: 2015-07-12
+///       - Added support for Insert statement.
 ///     1.03: 2015-06-17
 ///       - Added support for Update and Delete statements.
 ///     1.02: 2015-05-05
@@ -210,6 +212,15 @@ type
     property TableNames: IGpSQLNames read GetTableNames;
   end; { IGpSQLDelete }
 
+  IGpSQLInsert = interface(IGpSQLSection) ['{FD8380C4-C20A-4F02-B3D9-95B6F2CCDF40}']
+    function  GetTableName: string;
+    function  GetValues: IGpSQLNameValuePairs;
+    procedure SetTableName(const value: string);
+  //
+    property TableName: string read GetTableName write SetTableName;
+    property Values: IGpSQLNameValuePairs read GetValues;
+  end; { IGpSQLInsert }
+
   IGpSQLUpdate = interface(IGpSQLSection) ['{61AA0D87-382C-4F83-AAA6-65B9416C09A8}']
     function  GetTableName: string;
     function  GetValues: IGpSQLNameValuePairs;
@@ -288,6 +299,7 @@ type
     function GetJoins: IGpSQLJoins;
     function GetOrderBy: IGpSQLOrderBy;
     function GetSelect: IGpSQLSelect;
+    function GetInsert: IGpSQLInsert;
     function GetUpdate: IGpSQLUpdate;
     function GetWhere: IGpSQLWhere;
   //
@@ -295,6 +307,7 @@ type
     function  IsEmpty: boolean;
     property Select: IGpSQLSelect read GetSelect;
     property Delete: IGpSQLDelete read GetDelete;
+    property Insert: IGpSQLInsert read GetInsert;
     property Update: IGpSQLUpdate read GetUpdate;
     property Joins: IGpSQLJoins read GetJoins;
     property Where: IGpSQLWhere read GetWhere;
@@ -527,6 +540,22 @@ type
     property TableNames: IGpSQLNames read GetTableNames;
   end; { TGpSQLDelete }
 
+  TGpSQLInsert = class(TGpSQLSection, IGpSQLInsert)
+  strict private
+    FTableName: string;
+    FValues: IGpSQLNameValuePairs;
+  strict protected
+    function  GetTableName: string;
+    function  GetValues: IGpSQLNameValuePairs;
+    procedure SetTableName(const value: string);
+  public
+    constructor Create;
+    procedure Clear; override;
+    function  IsEmpty: boolean; override;
+    property TableName: string read GetTableName write SetTableName;
+    property Values: IGpSQLNameValuePairs read GetValues;
+  end; { TGpSQLInsert }
+
   TGpSQLUpdate = class(TGpSQLSection, IGpSQLUpdate)
   strict private
     FTableName: string;
@@ -541,7 +570,7 @@ type
     function  IsEmpty: boolean; override;
     property TableName: string read GetTableName write SetTableName;
     property Values: IGpSQLNameValuePairs read GetValues;
-  end; { SetTableName }
+  end; { TGpSQLUpdate }
 
   TGpSQLJoin = class(TGpSQLSection, IGpSQLJoin)
   strict private
@@ -654,6 +683,7 @@ type
     FJoins  : IGpSQLJoins;
     FOrderBy: IGpSQLOrderBy;
     FSelect : IGpSQLSelect;
+    FInsert : IGpSQLInsert;
     FUpdate : IGpSQLUpdate;
     FWhere  : IGpSQLWhere;
   strict protected
@@ -663,6 +693,7 @@ type
     function  GetJoins: IGpSQLJoins;
     function  GetOrderBy: IGpSQLOrderBy;
     function  GetSelect: IGpSQLSelect;
+    function  GetInsert: IGpSQLInsert;
     function  GetUpdate: IGpSQLUpdate;
     function  GetWhere: IGpSQLWhere;
   public
@@ -671,6 +702,7 @@ type
     function  IsEmpty: boolean;
     property Select: IGpSQLSelect read GetSelect;
     property Delete: IGpSQLDelete read GetDelete;
+    property Insert: IGpSQLInsert read GetInsert;
     property Update: IGpSQLUpdate read GetUpdate;
     property Joins: IGpSQLJoins read GetJoins;
     property Where: IGpSQLWhere read GetWhere;
@@ -1173,6 +1205,39 @@ begin
   Result := TableNames.IsEmpty;
 end; { TGpSQLDelete.IsEmpty }
 
+{ TGpSQLInsert }
+
+constructor TGpSQLInsert.Create;
+begin
+  inherited Create('Insert');
+  FValues := TGpSQLNameValuePairs.Create;
+end; { TGpSQLInsert.Create }
+
+procedure TGpSQLInsert.Clear;
+begin
+  TableName := '';
+end; { TGpSQLInsert.Clear }
+
+function TGpSQLInsert.GetTableName: string;
+begin
+  Result := FTableName;
+end; { TGpSQLInsert.GetTableName }
+
+function TGpSQLInsert.GetValues: IGpSQLNameValuePairs;
+begin
+  Result := FValues;
+end; { TGpSQLInsert.GetValues }
+
+function TGpSQLInsert.IsEmpty: boolean;
+begin
+  Result := (TableName = '');
+end; { TGpSQLInsert.IsEmpty }
+
+procedure TGpSQLInsert.SetTableName(const value: string);
+begin
+  FTableName := value;
+end; { TGpSQLInsert.SetTableName }
+
 { TGpSQLUpdate }
 
 constructor TGpSQLUpdate.Create;
@@ -1447,6 +1512,7 @@ begin
   inherited;
   FSelect := TGpSQLSelect.Create;
   FDelete := TGpSQLDelete.Create;
+  FInsert := TGpSQLInsert.Create;
   FUpdate := TGpSQLUpdate.Create;
   FJoins := TGpSQLJoins.Create;
   FWhere := TGpSQLWhere.Create;
@@ -1484,6 +1550,11 @@ function TGpSQLAST.GetSelect: IGpSQLSelect;
 begin
   Result := FSelect;
 end; { TGpSQLAST.GetSelect }
+
+function TGpSQLAST.GetInsert: IGpSQLInsert;
+begin
+  Result := FInsert;
+end; { TGpSQLAST.GetInsert }
 
 function TGpSQLAST.GetUpdate: IGpSQLUpdate;
 begin
