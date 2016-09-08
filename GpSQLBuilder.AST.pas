@@ -1,7 +1,7 @@
 ///<summary>Abstract syntax tree for the SQL query builder.</summary>
 ///<author>Primoz Gabrijelcic</author>
 ///<remarks><para>
-///Copyright (c) 2015, Primoz Gabrijelcic
+///Copyright (c) 2016, Primoz Gabrijelcic
 ///All rights reserved.
 ///
 ///Redistribution and use in source and binary forms, with or without
@@ -31,9 +31,11 @@
 ///
 ///   Author            : Primoz Gabrijelcic
 ///   Creation date     : 2015-04-20
-///   Last modification : 2015-07-12
-///   Version           : 1.04
+///   Last modification : 2016-09-08
+///   Version           : 1.05
 ///   History:
+///     1.05: 2016-09-08
+///       - Added support for Insert columns.
 ///     1.04: 2015-07-12
 ///       - [leledumbo] Added support for Insert statement.
 ///     1.03: 2015-06-17
@@ -213,10 +215,12 @@ type
   end; { IGpSQLDelete }
 
   IGpSQLInsert = interface(IGpSQLSection) ['{FD8380C4-C20A-4F02-B3D9-95B6F2CCDF40}']
+    function  GetColumns: IGpSQLNames;
     function  GetTableName: string;
     function  GetValues: IGpSQLNameValuePairs;
     procedure SetTableName(const value: string);
   //
+    property Columns: IGpSQLNames read GetColumns;
     property TableName: string read GetTableName write SetTableName;
     property Values: IGpSQLNameValuePairs read GetValues;
   end; { IGpSQLInsert }
@@ -542,15 +546,18 @@ type
 
   TGpSQLInsert = class(TGpSQLSection, IGpSQLInsert)
   strict private
+    FColumns  : IGpSQLNames;
     FTableName: string;
-    FValues: IGpSQLNameValuePairs;
+    FValues   : IGpSQLNameValuePairs;
   strict protected
+    function  GetColumns: IGpSQLNames;
     function  GetTableName: string;
     function  GetValues: IGpSQLNameValuePairs;
     procedure SetTableName(const value: string);
   public
     constructor Create;
     procedure Clear; override;
+    property Columns: IGpSQLNames read GetColumns;
     function  IsEmpty: boolean; override;
     property TableName: string read GetTableName write SetTableName;
     property Values: IGpSQLNameValuePairs read GetValues;
@@ -1210,6 +1217,7 @@ end; { TGpSQLDelete.IsEmpty }
 constructor TGpSQLInsert.Create;
 begin
   inherited Create('Insert');
+  FColumns := TGpSQLNames.Create;
   FValues := TGpSQLNameValuePairs.Create;
 end; { TGpSQLInsert.Create }
 
@@ -1217,6 +1225,11 @@ procedure TGpSQLInsert.Clear;
 begin
   TableName := '';
 end; { TGpSQLInsert.Clear }
+
+function TGpSQLInsert.GetColumns: IGpSQLNames;
+begin
+  Result := FColumns;
+end; { TGpSQLInsert.GetColumns }
 
 function TGpSQLInsert.GetTableName: string;
 begin

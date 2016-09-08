@@ -1,7 +1,7 @@
 ///<summary>Serializers working on the SQL AST.</summary>
 ///<author>Primoz Gabrijelcic</author>
 ///<remarks><para>
-///Copyright (c) 2015, Primoz Gabrijelcic
+///Copyright (c) 2016, Primoz Gabrijelcic
 ///All rights reserved.
 ///
 ///Redistribution and use in source and binary forms, with or without
@@ -31,10 +31,12 @@
 ///
 ///   Author            : Primoz Gabrijelcic
 ///   Creation date     : 2015-04-20
-///   Last modification : 2015-07-12
-///   Version           : 1.04
+///   Last modification : 2016-09-08
+///   Version           : 1.05
 ///</para><para>
 ///   History:
+///     1.05: 2016-09-08
+///       - Added support for Insert columns.
 ///     1.04: 2015-07-12
 ///       - [leledumbo] Added support for Insert statement.
 ///     1.03: 2015-06-17
@@ -107,7 +109,7 @@ type
     FAST : IGpSQLAST;
   strict protected
     function  SerializeCase(const caseExpr: IGpSQLCase): string;
-    function SerializeNames(const columns: IGpSQLNames): string;
+    function  SerializeNames(const columns: IGpSQLNames): string;
     function  SerializeDirection(direction: TGpSQLOrderByDirection): string;
     function  SerializeExpression(const expression: IGpSQLExpression): string;
     function  SerializeDelete: string;
@@ -356,6 +358,10 @@ var
   i: integer;
   Columns,Values: String;
 begin
+  Result := '';
+  if pairs.Count = 0 then
+    Exit;
+
   Columns := '';
   Values := '';
   for i := 0 to pairs.Count - 1 do begin
@@ -410,9 +416,13 @@ function TGpSQLSerializer.SerializeInsert: string;
 begin
   if FAST.Insert.IsEmpty then
     Result := ''
-  else
-    Result := Concatenate(['INSERT INTO', FAST.Insert.TableName,
-      SerializeNameValuePairsForInsert(FAST.Insert.Values)]);
+  else begin
+    Result := Concatenate(['INSERT INTO', FAST.Insert.TableName]);
+    if FAST.Insert.Columns.Count > 0 then
+      Result := Concatenate([Result, '(', SerializeNames(FAST.Insert.Columns), ')'])
+    else
+      Result := Concatenate([Result, SerializeNameValuePairsForInsert(FAST.Insert.Values)]);
+  end;
 end; { TGpSQLSerializer.SerializeInsert }
 
 function TGpSQLSerializer.SerializeUpdate: string;

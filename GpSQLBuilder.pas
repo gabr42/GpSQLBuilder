@@ -1,7 +1,7 @@
 ///<summary>SQL query builder.</summary>
 ///<author>Primoz Gabrijelcic</author>
 ///<remarks><para>
-///Copyright (c) 2015, Primoz Gabrijelcic
+///Copyright (c) 2016, Primoz Gabrijelcic
 ///All rights reserved.
 ///
 ///Redistribution and use in source and binary forms, with or without
@@ -31,10 +31,15 @@
 ///
 ///   Author            : Primoz Gabrijelcic
 ///   Creation date     : 2010-11-24
-///   Last modification : 2015-07-12
-///   Version           : 3.05
+///   Last modification : 2016-09-08
+///   Version           : 3.06
 ///</para><para>
 ///   History:
+///     3.06: 2016-09-08
+///       - Added support for Insert columns.
+///       - Added overloads for IGpSQLBuilder.From(IGpSQLBuilder) and
+///         .From(IGpSQLBuilderExpression).
+///       - Added SQL.&Not and SQL.Concat.
 ///     3.05: 2015-07-12
 ///       - [leledumbo] Added .Insert and .Into methods.
 ///       - Sorted TGpSQLBuilder implementation.
@@ -191,7 +196,9 @@ type
     function Expression(const term: string = ''): IGpSQLBuilderExpression; overload;
     function Expression(const term: array of const): IGpSQLBuilderExpression; overload;
     function First(num: integer): IGpSQLBuilder;
-    function From(const dbName: string): IGpSQLBuilder;
+    function From(const expression: IGpSQLBuilderExpression): IGpSQLBuilder; overload;
+    function From(const query: IGpSQLBuilder): IGpSQLBuilder; overload;
+    function From(const dbName: string): IGpSQLBuilder; overload;
     function FullJoin(const dbName: string): IGpSQLBuilder;
     function GetAsString: string;
     function GetAST: IGpSQLAST;
@@ -221,6 +228,7 @@ type
   end; { IGpSQLBuilder }
 
   SQL = class
+    class function Concat(const q: array of IGpSQLBuilder): string;
     class function Count(const s: string): string; overload;
     class function Count(const s: IGpSQLBuilder): string; overload;
     class function Count(const s: IGpSQLBuilderExpression): string; overload;
@@ -236,6 +244,9 @@ type
     class function Max(const s: string): string; overload;
     class function Max(const s: IGpSQLBuilder): string; overload;
     class function Max(const s: IGpSQLBuilderExpression): string; overload;
+    class function &Not(const s: string): string; overload;
+    class function &Not(const s: IGpSQLBuilder): string; overload;
+    class function &Not(const s: IGpSQLBuilderExpression): string; overload;
     class function Upper(const s: string): string; overload;
     class function Upper(const s: IGpSQLBuilder): string; overload;
     class function Upper(const s: IGpSQLBuilderExpression): string; overload;
@@ -347,7 +358,9 @@ type
     function  Expression(const term: string = ''): IGpSQLBuilderExpression; overload;
     function  Expression(const term: array of const): IGpSQLBuilderExpression; overload;
     function  First(num: integer): IGpSQLBuilder;
-    function  From(const dbName: string): IGpSQLBuilder;
+    function  From(const expression: IGpSQLBuilderExpression): IGpSQLBuilder; overload;
+    function  From(const query: IGpSQLBuilder): IGpSQLBuilder; overload;
+    function  From(const dbName: string): IGpSQLBuilder; overload;
     function  FullJoin(const dbName: string): IGpSQLBuilder;
     function  GroupBy(const colName: string = ''): IGpSQLBuilder;
     function  Having(const expression: string = ''): IGpSQLBuilder; overload;
@@ -1018,7 +1031,7 @@ begin
     secInsert:
       begin
         FASTSection   := FAST.Insert;
-        FASTColumns   := nil;
+        FASTColumns   := FAST.Insert.Columns;
         FActiveExpr   := nil;
         FTableNames   := nil;
         FActiveValues := FAST.Insert.Values;
@@ -1081,6 +1094,16 @@ begin
   Result := InternalSet(colName, SqlParamsToStr(colValue));
 end; { TGpSQLBuilder }
 
+function TGpSQLBuilder.From(const expression: IGpSQLBuilderExpression): IGpSQLBuilder;
+begin
+  Result := From('(' + expression.AsString + ')');
+end; { TGpSQLBuilder.From }
+
+function TGpSQLBuilder.From(const query: IGpSQLBuilder): IGpSQLBuilder;
+begin
+  Result := From('(' + query.AsString + ')');
+end; { TGpSQLBuilder.From }
+
 function TGpSQLBuilder.Skip(num: integer): IGpSQLBuilder;
 var
   qual: IGpSQLSelectQualifier;
@@ -1120,6 +1143,33 @@ begin
 end; { TGpSQLBuilder.Where }
 
 { SQL }
+
+class function SQL.&Not(const s: string): string;
+begin
+  Result := 'not ' + s;
+end; { SQL }
+
+class function SQL.&Not(const s: IGpSQLBuilder): string;
+begin
+  Result := &Not(s.AsString);
+end; { SQL }
+
+class function SQL.&Not(const s: IGpSQLBuilderExpression): string;
+begin
+  Result := &Not(s.AsString);
+end; { SQL }
+
+class function SQL.Concat(const q: array of IGpSQLBuilder): string;
+var
+  i: integer;
+begin
+  Result := '';
+  for i := Low(q) to High(q) do begin
+    if i > Low(q) then
+      Result := Result + ' ';
+    Result := Result + q[i].AsString;
+  end;
+end; { SQL.Concat }
 
 class function SQL.Count(const s: string): string;
 begin
