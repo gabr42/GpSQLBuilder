@@ -8,10 +8,7 @@ uses
   DUnitX.Loggers.Console,
   DUnitX.Loggers.Xml.NUnit,
   DUnitX.TestFramework,
-  GpSQLBuilder in '..\GpSQLBuilder.pas',
-  TestGpSQLBuilder1 in 'TestGpSQLBuilder1.pas',
-  GpSQLBuilder.AST in '..\GpSQLBuilder.AST.pas',
-  GpSQLBuilder.Serialize in '..\GpSQLBuilder.Serialize.pas';
+  GpSQLBuilder.DUnitX;
 
 var
   runner : ITestRunner;

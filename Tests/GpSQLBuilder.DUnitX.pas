@@ -1,4 +1,4 @@
-unit TestGpSQLBuilder1;
+unit GpSQLBuilder.DUnitX;
 
 interface
 
